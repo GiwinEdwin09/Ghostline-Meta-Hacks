@@ -15,7 +15,8 @@ from .homography import order_corners
 EDGE_TRIM = 0.12  # ignore this fraction of each side next to a corner (rounded or curled corners)
 RANSAC_ITERS = 150
 INLIER_PX = 0.75
-MIN_SIGMA_PX = 0.3
+MIN_SIGMA_PX = 0.3  # corner uncertainty floor from a binary mask
+MIN_SIGMA_GRAY_PX = 0.1  # ... after the grey-level edge refinement (synthetic errors are under 0.2)
 SUBPIX_MAX_MOVE = 1.0  # px a refined side may shift
 SUBPIX_MAX_TURN = 2.0  # px its ends may move (a binary mask can be a pixel off over a side)
 PROFILE_SEGMENTS = 12
@@ -142,9 +143,8 @@ def detect_sheet_corners(
         return min_area_rect_detection(contour, notices)
     corners = order_corners(corners)
     edge_rms = float(np.mean(rms))
-    return SheetDetection(
-        corners, max(MIN_SIGMA_PX, edge_rms), edge_rms, counts, "ransac_lines", subpix, notices
-    )
+    sigma = MIN_SIGMA_GRAY_PX if subpix else max(MIN_SIGMA_PX, edge_rms)
+    return SheetDetection(corners, sigma, edge_rms, counts, "ransac_lines", subpix, notices)
 
 
 def _refine_line_with_gray(

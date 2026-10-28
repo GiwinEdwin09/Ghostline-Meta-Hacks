@@ -29,6 +29,18 @@ def offset_scale(d_m: float, z_m: float) -> float:
     return 1.0 - d_m / z_m
 
 
+def _decompose(h_px_to_mm: np.ndarray, f_px: float, image_size: tuple[int, int]):
+    """M = K^-1 H^-1 (sheet in metres) = kappa [r1 r2 t]; returns (M, kappa) or None."""
+    w, h = image_size
+    k = np.array([[f_px, 0, (w - 1) / 2], [0, f_px, (h - 1) / 2], [0, 0, 1.0]])
+    a = np.linalg.inv(h_px_to_mm) @ np.diag([1000.0, 1000.0, 1.0])  # px ~ a @ [X, Y, 1] (metres)
+    m = np.linalg.inv(k) @ a
+    l1, l2 = np.linalg.norm(m[:, 0]), np.linalg.norm(m[:, 1])
+    if not 0.7 < l1 / l2 < 1.4:
+        return None
+    return m, (l1 + l2) / 2 * (1 if m[2, 2] > 0 else -1)
+
+
 def pose_from_homography(
     h_px_to_mm: np.ndarray, f_px: float, image_size: tuple[int, int]
 ) -> tuple[float, np.ndarray] | None:
@@ -38,14 +50,10 @@ def pose_from_homography(
     plan's Z = f * 0.297 / long side and c = H(image centre) hold for a head-on camera. Returns
     (Z in metres, foot point in sheet millimetres), or None if the decomposition is implausible.
     """
-    w, h = image_size
-    k = np.array([[f_px, 0, (w - 1) / 2], [0, f_px, (h - 1) / 2], [0, 0, 1.0]])
-    a = np.linalg.inv(h_px_to_mm) @ np.diag([1000.0, 1000.0, 1.0])  # px ~ a @ [X, Y, 1] (metres)
-    m = np.linalg.inv(k) @ a
-    l1, l2 = np.linalg.norm(m[:, 0]), np.linalg.norm(m[:, 1])
-    if not 0.7 < l1 / l2 < 1.4:
+    dec = _decompose(h_px_to_mm, f_px, image_size)
+    if dec is None:
         return None
-    kappa = (l1 + l2) / 2 * (1 if m[2, 2] > 0 else -1)
+    m, kappa = dec
     r1, r2, t = m[:, 0] / kappa, m[:, 1] / kappa, m[:, 2] / kappa
     r3 = np.cross(r1, r2)
     r3 /= np.linalg.norm(r3)
@@ -54,6 +62,22 @@ def pose_from_homography(
         return None
     foot = -1000.0 * np.array([r1 @ t, r2 @ t])
     return z, foot
+
+
+def depth_of_sheet_points(
+    h_px_to_mm: np.ndarray, f_px: float, image_size: tuple[int, int], sheet_mm: np.ndarray
+) -> np.ndarray | None:
+    """Distance along the optical axis (metres) to points of the sheet plane given in sheet mm.
+
+    A sphere looks like a disc of radius f r / depth wherever it is, so area * (depth / f)^2 is
+    constant for in-plane motion even when the camera isn't square to the sheet.
+    """
+    dec = _decompose(h_px_to_mm, f_px, image_size)
+    if dec is None:
+        return None
+    m, kappa = dec
+    p = np.atleast_2d(sheet_mm) / 1000.0
+    return (p[:, 0] * m[2, 0] + p[:, 1] * m[2, 1] + m[2, 2]) / kappa
 
 
 def to_plane_of_motion(

@@ -80,3 +80,11 @@ def local_scale(h: np.ndarray, p: np.ndarray, eps: float = 0.5) -> float:
     dx = (apply_h(h, p + [eps, 0]) - apply_h(h, p - [eps, 0]))[0] / (2 * eps)
     dy = (apply_h(h, p + [0, eps]) - apply_h(h, p - [0, eps]))[0] / (2 * eps)
     return float(np.sqrt(abs(dx[0] * dy[1] - dx[1] * dy[0])))
+
+
+def local_scale_many(h: np.ndarray, pts: np.ndarray, eps: float = 0.5) -> np.ndarray:
+    """`local_scale` for many image points at once (millimetres per pixel, shape (N,))."""
+    p = np.atleast_2d(np.asarray(pts, float))
+    dx = (apply_h(h, p + [eps, 0]) - apply_h(h, p - [eps, 0])) / (2 * eps)
+    dy = (apply_h(h, p + [0, eps]) - apply_h(h, p - [0, eps])) / (2 * eps)
+    return np.sqrt(np.abs(dx[:, 0] * dy[:, 1] - dx[:, 1] * dy[:, 0]))

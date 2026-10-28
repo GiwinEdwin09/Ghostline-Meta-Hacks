@@ -111,18 +111,26 @@ class Calibration(BaseModel):
     def _origin_mm(self) -> np.ndarray:
         return np.asarray(self.paper_mm) / 2
 
-    def px_to_world(
-        self, px: np.ndarray, down: np.ndarray | None = None, plane_of_motion: bool = True
-    ) -> np.ndarray:
-        """Pixels (N, 2) -> metres in the physics frame (N, 2)."""
+    def px_to_plane_mm(self, px: np.ndarray, plane_of_motion: bool = True) -> np.ndarray:
+        """Pixels (N, 2) -> sheet-frame millimetres, corrected to the plane of motion."""
         sheet = apply_h(self.H_np, px)
         if plane_of_motion:
             sheet = offset_math.to_plane_of_motion(
                 sheet, np.asarray(self.centre_mm), self.offset.scale
             )
+        return sheet
+
+    def plane_mm_to_world(self, sheet_mm: np.ndarray, down: np.ndarray | None = None) -> np.ndarray:
+        """Sheet-frame millimetres -> metres in the physics frame (origin at the sheet centre)."""
         right, up = physics_axes(self.gravity_down if down is None else down)
-        rel = (sheet - self._origin_mm()) / 1000.0
+        rel = (np.asarray(sheet_mm) - self._origin_mm()) / 1000.0
         return np.column_stack([rel @ right, rel @ up])
+
+    def px_to_world(
+        self, px: np.ndarray, down: np.ndarray | None = None, plane_of_motion: bool = True
+    ) -> np.ndarray:
+        """Pixels (N, 2) -> metres in the physics frame (N, 2)."""
+        return self.plane_mm_to_world(self.px_to_plane_mm(px, plane_of_motion), down)
 
     def world_to_px(
         self, xy_m: np.ndarray, down: np.ndarray | None = None, plane_of_motion: bool = True
@@ -136,6 +144,16 @@ class Calibration(BaseModel):
                 sheet, np.asarray(self.centre_mm), self.offset.scale
             )
         return apply_h(self.H_inv_np, sheet)
+
+    def scale_sigma_at(self, points_px: np.ndarray, n: int = 300, seed: int = 0) -> float:
+        """Relative scale uncertainty (Monte Carlo, as in calibrate) at the given image points."""
+        from .uncertainty import monte_carlo
+
+        return monte_carlo(
+            np.asarray(self.corners_px), np.asarray(self.corners_mm), self.sigma_corner_px,
+            np.asarray(self.centre_px), self.offset.d_m, self.offset.z_m, n=n, seed=seed,
+            points_px=points_px,
+        ).sigma_scale_rel  # fmt: skip
 
     @property
     def m_per_px(self) -> float:

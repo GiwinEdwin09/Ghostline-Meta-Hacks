@@ -88,7 +88,7 @@ def _bbox(q: dict) -> tuple[float, float, float, float]:
 
 
 def _grid(roi, ss, box):
-    """Sample-centre grid (cv coordinates) for the part of the ROI that a bbox covers."""
+    """Slices and sample-centre grid (cv coordinates) of the part of the ROI a bbox covers."""
     x0, y0, x1, y1 = roi
     w, h = x1 - x0, y1 - y0
     i0 = max(int(np.floor((box[0] - (x0 - 0.5)) * ss)), 0)
@@ -99,38 +99,34 @@ def _grid(roi, ss, box):
         return None
     xs = (x0 - 0.5 + (np.arange(i0, i1) + 0.5) / ss).astype(np.float32)
     ys = (y0 - 0.5 + (np.arange(j0, j1) + 0.5) / ss).astype(np.float32)
-    return (j0, j1, i0, i1), np.meshgrid(xs, ys)
+    return (slice(j0, j1), slice(i0, i1)), np.meshgrid(xs, ys)
 
 
-def _disc_mask(cx, cy, r, roi, ss) -> np.ndarray:
-    x0, y0, x1, y1 = roi
-    out = np.zeros(((y1 - y0) * ss, (x1 - x0) * ss), bool)
+def _disc_mask(cx, cy, r, roi, ss):
     g = _grid(roi, ss, (cx - r, cy - r, cx + r, cy + r))
-    if g is not None:
-        (j0, j1, i0, i1), (xx, yy) = g
-        out[j0:j1, i0:i1] = (xx - cx) ** 2 + (yy - cy) ** 2 <= r * r
-    return out
+    if g is None:
+        return None
+    sl, (xx, yy) = g
+    return sl, (xx - cx) ** 2 + (yy - cy) ** 2 <= r * r
 
 
-def _poly_mask(pts, roi, ss) -> np.ndarray:
+def _poly_mask(pts, roi, ss):
     """Exact sub-sample test for a convex polygon (no boundary dilation, unlike cv2.fillPoly)."""
-    x0, y0, x1, y1 = roi
-    out = np.zeros(((y1 - y0) * ss, (x1 - x0) * ss), bool)
     g = _grid(roi, ss, (pts[:, 0].min(), pts[:, 1].min(), pts[:, 0].max(), pts[:, 1].max()))
     if g is None:
-        return out
-    (j0, j1, i0, i1), (xx, yy) = g
+        return None
+    sl, (xx, yy) = g
     area = np.sum(pts[:, 0] * np.roll(pts[:, 1], -1) - np.roll(pts[:, 0], -1) * pts[:, 1])
     sign = 1.0 if area >= 0 else -1.0
     inside = np.ones(xx.shape, bool)
     for k in range(len(pts)):
         a, b = pts[k], pts[(k + 1) % len(pts)]
         inside &= sign * ((b[0] - a[0]) * (yy - a[1]) - (b[1] - a[1]) * (xx - a[0])) >= 0
-    out[j0:j1, i0:i1] = inside
-    return out
+    return sl, inside
 
 
-def _shape_mask(q: dict, roi, ss) -> np.ndarray:
+def _shape_mask(q: dict, roi, ss):
+    """(slices, boolean inside-test) of a shape on the supersampled ROI grid, or None."""
     if q.get("c") is not None:
         return _disc_mask(q["c"][0], q["c"][1], q["r"], roi, ss)
     return _poly_mask(q["pts"], roi, ss)
@@ -148,25 +144,46 @@ def _paint(big: np.ndarray, q: dict, roi, ss) -> None:
             (0.45, -0.28, np.minimum(255, 1.25 * base + 55)),
         ]
         for scale, off, col in rings:
-            big[_disc_mask(cx + off * r, cy + off * r, scale * r, roi, ss)] = col
+            m = _disc_mask(cx + off * r, cy + off * r, scale * r, roi, ss)
+            if m is not None:
+                big[m[0]][m[1]] = col
     else:
-        big[_shape_mask(q, roi, ss)] = base
+        m = _shape_mask(q, roi, ss)
+        if m is not None:
+            big[m[0]][m[1]] = base
 
 
 def _block_mean(a: np.ndarray, ss: int) -> np.ndarray:
     h, w = a.shape[0] // ss, a.shape[1] // ss
-    return a.reshape(h, ss, w, ss, *a.shape[2:]).mean(axis=(1, 3))
+    return cv2.resize(a, (w, h), interpolation=cv2.INTER_AREA)
 
 
 def _render_roi(plate_roi: np.ndarray, shapes: list[dict], roi, tags: list[str]):
     """Composite shapes over a plate patch; returns (patch, {tag: coverage})."""
-    big = np.repeat(np.repeat(plate_roi, SS, axis=0), SS, axis=1).astype(np.float32)
-    masks = {t: np.zeros(big.shape[:2], bool) for t in tags}
+    h, w = plate_roi.shape[:2]
+    big = cv2.resize(plate_roi, (w * SS, h * SS), interpolation=cv2.INTER_NEAREST)
+    masks = {t: np.zeros(big.shape[:2], np.float32) for t in tags}
     for q in shapes:
         _paint(big, q, roi, SS)
         if q["p"].tag in masks:
-            masks[q["p"].tag] |= _shape_mask(q, roi, SS)
-    return _block_mean(big, SS), {t: _block_mean(m.astype(np.float32), SS) for t, m in masks.items()}
+            m = _shape_mask(q, roi, SS)
+            if m is not None:
+                masks[q["p"].tag][m[0]][m[1]] = 1.0
+    return _block_mean(big, SS), {t: _block_mean(m, SS) for t, m in masks.items()}
+
+
+def _thin_alpha(shapes: list[dict], roi) -> np.ndarray:
+    """1x anti-aliased coverage of long thin shapes (a string); precision doesn't matter."""
+    x0, y0, x1, y1 = roi
+    canvas = np.zeros((y1 - y0, x1 - x0), np.uint8)
+    for q in shapes:
+        pts = q["pts"]
+        p0, p1 = (pts[0] + pts[3]) / 2, (pts[1] + pts[2]) / 2
+        width = max(1, int(round(np.linalg.norm(pts[0] - pts[3]))))
+        a = tuple(int(round(v * 16)) for v in (p0 - [x0, y0]))
+        b = tuple(int(round(v * 16)) for v in (p1 - [x0, y0]))
+        cv2.line(canvas, a, b, 255, width, cv2.LINE_AA, 4)
+    return canvas.astype(np.float32)[..., None] / 255.0
 
 
 def _texture(h: int, w: int, rng: np.random.Generator) -> np.ndarray:
@@ -180,10 +197,12 @@ def _texture(h: int, w: int, rng: np.random.Generator) -> np.ndarray:
 
 def _coverage(shapes: list[dict], shape: tuple[int, int], ss: int = 8) -> np.ndarray:
     h, w = shape
-    union = np.zeros((h * ss, w * ss), bool)
+    union = np.zeros((h * ss, w * ss), np.float32)
     for q in shapes:
-        union |= _shape_mask(q, (0, 0, w, h), ss)
-    return _block_mean(union.astype(np.float32), ss)
+        m = _shape_mask(q, (0, 0, w, h), ss)
+        if m is not None:
+            union[m[0]][m[1]] = 1.0
+    return _block_mean(union, ss)
 
 
 def _composite(plate: np.ndarray, shapes: list[dict], color) -> np.ndarray:
@@ -347,28 +366,45 @@ def render_clip(spec: ClipSpec, out_dir: str | Path, name: str | None = None) ->
             for k in keys:
                 centroid[k][i] = cam.project(truth["tracks"][k][i : i + 1])[0]
             subs = [[_project_prim(cam, p) for p in system.dynamic(t_cap[i] + dt)] for dt in sub_dt]
-            boxes = np.array([_bbox(q) for s in subs for q in s])
+            solid_subs = [[q for q in sh if q["p"].tag != "string"] for sh in subs]
+            thin_subs = [[q for q in sh if q["p"].tag == "string"] for sh in subs]
             frame = base.copy()
             roi_masks = {}
-            if len(boxes):
+
+            def roi_of(groups):
+                boxes = np.array([_bbox(q) for g in groups for q in g]).reshape(-1, 4)
+                if not len(boxes):
+                    return None
                 x0 = int(max(np.floor(boxes[:, 0].min()) - 3, 0))
                 y0 = int(max(np.floor(boxes[:, 1].min()) - 3, 0))
                 x1 = int(min(np.ceil(boxes[:, 2].max()) + 4, w))
                 y1 = int(min(np.ceil(boxes[:, 3].max()) + 4, h))
-                if x1 > x0 and y1 > y0:
-                    roi = (x0, y0, x1, y1)
-                    present = sorted({q["p"].tag for s in subs for q in s} & set(tags.values()))
-                    acc = np.zeros((y1 - y0, x1 - x0, 3), np.float32)
-                    cov_acc = {t: 0.0 for t in present}
-                    for shapes in subs:
-                        patch, cov = _render_roi(base[y0:y1, x0:x1], shapes, roi, present)
-                        acc += patch
+                return (x0, y0, x1, y1) if x1 > x0 and y1 > y0 else None
+
+            roi = roi_of(subs)
+            roi_s = roi_of(solid_subs)
+            if roi is not None:
+                x0, y0, x1, y1 = roi
+                present = sorted({q["p"].tag for sh in solid_subs for q in sh} & set(tags.values()))
+                acc = np.zeros((y1 - y0, x1 - x0, 3), np.float32)
+                cov_acc = {t: 0.0 for t in present}
+                for thin, solid in zip(thin_subs, solid_subs, strict=True):
+                    patch = base[y0:y1, x0:x1].copy()
+                    if thin:
+                        a_thin = _thin_alpha(thin, roi)
+                        patch = patch * (1 - a_thin) + np.array((235, 235, 235), np.float32) * a_thin
+                    if solid and roi_s is not None:
+                        sx0, sy0, sx1, sy1 = roi_s
+                        sub = patch[sy0 - y0 : sy1 - y0, sx0 - x0 : sx1 - x0]
+                        out, cov = _render_roi(sub, solid, roi_s, present)
+                        patch[sy0 - y0 : sy1 - y0, sx0 - x0 : sx1 - x0] = out
                         for t in present:
                             cov_acc[t] = cov_acc[t] + cov[t]
-                    frame[y0:y1, x0:x1] = acc / len(subs)
-                    for k in keys:
-                        if k in tags and tags[k] in cov_acc:
-                            roi_masks[k] = (cov_acc[tags[k]] / len(subs) > 0.5, roi)
+                    acc += patch
+                frame[y0:y1, x0:x1] = acc / len(subs)
+                for k in keys:
+                    if k in tags and tags[k] in cov_acc:
+                        roi_masks[k] = (cov_acc[tags[k]] / len(subs) > 0.5, roi_s)
             for k in keys:
                 if k in tags:
                     full = np.zeros((h, w), bool)
