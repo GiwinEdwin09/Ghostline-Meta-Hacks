@@ -1,0 +1,44 @@
+{
+  "spin": {
+    "id": "ex-spin-down",
+    "fps": 60,
+    "window_s": 34,
+    "sigma": 0.015,
+    "seed": 11,
+    "truth": { "model": "S2", "c": 0.9, "b": 0.035, "omega0": 55, "phi0": 0.0 },
+    "marker_radius_m": 0.032,
+    "g": 9.8
+  },
+  "pendulum": {
+    "id": "ex-pendulum",
+    "fps": 60,
+    "window_s": 5.5,
+    "sigma": 0.006,
+    "seed": 23,
+    "truth": { "model": "P2", "g": 9.8, "L_eff": 0.6213, "gamma": 0.012, "theta0_deg": 38 },
+    "trial2": { "window_s": 14, "theta0_deg": 28, "seed": 29 },
+    "bob_radius_m": 0.012,
+    "pivot_m": [0.0, 0.7]
+  },
+  "free_fall": {
+    "id": "ex-free-fall",
+    "fps": 240,
+    "window_s": 0.48,
+    "sigma": 0.0015,
+    "seed": 31,
+    "truth": { "model": "FF1", "g": 9.8, "b_over_m": 0.02, "y0": 1.2, "v0": 0.0 },
+    "trial2": { "y0": 1.15, "seed": 37 },
+    "ball_radius_m": 0.02
+  },
+  "cant_tell": {
+    "id": "ex-cant-tell",
+    "fps": 60,
+    "window_s": 5.0,
+    "sigma": 0.006,
+    "seed": 41,
+    "truth": { "model": "P2", "g": 9.8, "L_eff": 0.55, "gamma": 0.03, "theta0_deg": 31 },
+    "out_of_plane": { "depth": 0.22, "omega": 1.15 },
+    "bob_radius_m": 0.012,
+    "pivot_m": [0.0, 0.62]
+  }
+}

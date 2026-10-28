@@ -12,12 +12,16 @@
     "gen:api": "bash ../scripts/gen_api_types.sh"
   },
   "dependencies": {
+    "@meta-sam/parser": "^0.1.0",
+    "@meta-sam/react": "^0.1.14",
+    "katex": "^0.19.1",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/katex": "^0.16.8",
     "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
