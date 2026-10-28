@@ -1,0 +1,121 @@
+{
+ "hash": "d2c65a2585087cf46d29676c1f01998a6c6eb2b901206d2455f6c1b8087de9d8",
+ "kind": "respond",
+ "model": "muse-wonder-1.0",
+ "request": {
+  "input": [
+   {
+    "content": [
+     {
+      "text": "Call get_plot with name 'frame'. Then describe the main colors in it in one sentence.",
+      "type": "input_text"
+     }
+    ],
+    "role": "user",
+    "type": "message"
+   },
+   {
+    "id": "rs_6ae24c0c2d3702d2c65c4411:rs_01a183f910a7707a8d2fbe4518b99c3c",
+    "status": "completed",
+    "summary": [],
+    "type": "reasoning"
+   },
+   {
+    "content": [
+     {
+      "annotations": [],
+      "logprobs": [],
+      "text": "Calling the plot tool for 'frame', then I'll describe its main colors in one sentence.",
+      "type": "output_text"
+     }
+    ],
+    "id": "rs_01a183f911e1717192bf708d444607b7",
+    "phase": "commentary",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+   },
+   {
+    "arguments": "{\"name\":\"frame\"}",
+    "call_id": "call_01a183f912c976268e0258eecb802d78",
+    "id": "fc_01a183f912c976268e0258eecb802d78",
+    "name": "get_plot",
+    "status": "completed",
+    "type": "function_call"
+   },
+   {
+    "call_id": "call_01a183f912c976268e0258eecb802d78",
+    "output": [
+     {
+      "image_url": "data:image/jpeg;sha256=7bd145e0ae3add84bae9e3887af13e57b24a06e895fe67477e7d84c88b80a896",
+      "type": "input_image"
+     }
+    ],
+    "type": "function_call_output"
+   }
+  ],
+  "max_output_tokens": 3000,
+  "model": "muse-wonder-1.0",
+  "reasoning": {
+   "effort": "low"
+  },
+  "tools": [
+   {
+    "description": "Return a named plot of the experiment as an image.",
+    "name": "get_plot",
+    "parameters": {
+     "additionalProperties": false,
+     "properties": {
+      "name": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "name"
+     ],
+     "type": "object"
+    },
+    "strict": true,
+    "type": "function"
+   }
+  ]
+ },
+ "response": {
+  "cost_usd": 0.004308,
+  "id": "resp_6ae24c11c5edaa591d374a84",
+  "incomplete_reason": null,
+  "model": "muse-wonder-1.0",
+  "output": [
+   {
+    "id": "rs_6ae24c11c5edaa591d374a84:rs_01a183f9249e756a943506f1bda5805f",
+    "status": "completed",
+    "summary": [],
+    "type": "reasoning"
+   },
+   {
+    "content": [
+     {
+      "annotations": [],
+      "logprobs": [],
+      "text": "The main colors are off-white, dark gray-black, orange, and blue.",
+      "type": "output_text"
+     }
+    ],
+    "id": "msg_01a183f926c2771fbc686346e1b2d3ef",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+   }
+  ],
+  "output_text": "The main colors are off-white, dark gray-black, orange, and blue.",
+  "repairs": 0,
+  "status": "completed",
+  "usage": {
+   "cached_tokens": 500,
+   "input_tokens": 1112,
+   "output_tokens": 88,
+   "reasoning_tokens": 63
+  }
+ },
+ "version": 1
+}

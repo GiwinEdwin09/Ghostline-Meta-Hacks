@@ -1,0 +1,91 @@
+{
+ "hash": "0a1c8db10282b469999375793904010151b043f740910838d4aadf32fc2bd161",
+ "kind": "respond",
+ "model": "muse-wonder-1.0",
+ "request": {
+  "input": [
+   {
+    "content": [
+     {
+      "text": "Call get_plot with name 'frame'. Then describe the main colors in it in one sentence.",
+      "type": "input_text"
+     }
+    ],
+    "role": "user",
+    "type": "message"
+   }
+  ],
+  "max_output_tokens": 3000,
+  "model": "muse-wonder-1.0",
+  "reasoning": {
+   "effort": "low"
+  },
+  "tools": [
+   {
+    "description": "Return a named plot of the experiment as an image.",
+    "name": "get_plot",
+    "parameters": {
+     "additionalProperties": false,
+     "properties": {
+      "name": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "name"
+     ],
+     "type": "object"
+    },
+    "strict": true,
+    "type": "function"
+   }
+  ]
+ },
+ "response": {
+  "cost_usd": 0.004336,
+  "id": "resp_6ae24c0c2d3702d2c65c4411",
+  "incomplete_reason": null,
+  "model": "muse-wonder-1.0",
+  "output": [
+   {
+    "id": "rs_6ae24c0c2d3702d2c65c4411:rs_01a183f910a7707a8d2fbe4518b99c3c",
+    "status": "completed",
+    "summary": [],
+    "type": "reasoning"
+   },
+   {
+    "content": [
+     {
+      "annotations": [],
+      "logprobs": [],
+      "text": "Calling the plot tool for 'frame', then I'll describe its main colors in one sentence.",
+      "type": "output_text"
+     }
+    ],
+    "id": "rs_01a183f911e1717192bf708d444607b7",
+    "phase": "commentary",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+   },
+   {
+    "arguments": "{\"name\":\"frame\"}",
+    "call_id": "call_01a183f912c976268e0258eecb802d78",
+    "id": "fc_01a183f912c976268e0258eecb802d78",
+    "name": "get_plot",
+    "status": "completed",
+    "type": "function_call"
+   }
+  ],
+  "output_text": "Calling the plot tool for 'frame', then I'll describe its main colors in one sentence.",
+  "repairs": 0,
+  "status": "completed",
+  "usage": {
+   "cached_tokens": 0,
+   "input_tokens": 504,
+   "output_tokens": 116,
+   "reasoning_tokens": 42
+  }
+ },
+ "version": 1
+}

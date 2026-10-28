@@ -1,0 +1,60 @@
+{
+ "hash": "dea59daac1e2c04ca3a9de96ca2d5afd10eea6419bc3501ca046cb10e40cb22d",
+ "kind": "chat",
+ "model": "meta-models/Muse-Spark-Open-816B-A42B",
+ "request": {
+  "max_tokens": 2000,
+  "messages": [
+   {
+    "content": [
+     {
+      "text": "Count the blue dots in this image, and name the shape of the big object.",
+      "type": "text"
+     },
+     {
+      "image_url": {
+       "url": "data:image/jpeg;sha256=9f7c7730edb93c30771f5545b369f151a37d8387eb7de9bfc6b30f13842243ac"
+      },
+      "type": "image_url"
+     }
+    ],
+    "role": "user"
+   }
+  ],
+  "model": "meta-models/Muse-Spark-Open-816B-A42B",
+  "response_format": {
+   "json_schema": {
+    "name": "Reading",
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "number": {
+       "type": "integer"
+      },
+      "shape": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "number",
+      "shape"
+     ],
+     "type": "object"
+    },
+    "strict": true
+   },
+   "type": "json_schema"
+  }
+ },
+ "response": {
+  "cached_tokens": 0,
+  "content": "{\n\"number\": 1,\n\"shape\": \"rectangle\"\n}",
+  "cost_usd": 0.002112,
+  "finish_reason": "stop",
+  "input_tokens": 673,
+  "model": "meta-models/Muse-Spark-Open-816B-A42B",
+  "output_tokens": 299,
+  "repairs": 0
+ },
+ "version": 1
+}
