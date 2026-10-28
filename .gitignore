@@ -26,3 +26,4 @@ out/
 
 # Subagent worktrees
 .claude/worktrees/
+.cache/
