@@ -79,7 +79,10 @@ function decimate<T>(arr: readonly T[], maxN: number): T[] {
 function paramEstimates(plan: ModelPlan, fit: FitOutput): ParamEstimate[] {
   return plan.free.map((f) => {
     const v = fit.values[f.name];
-    const half = 1.96 * (fit.stderr[f.name] ?? 0);
+    // Residuals from video are autocorrelated, so a block bootstrap gives wider intervals than
+    // the plain Jacobian covariance; widen it by a fixed factor, and cap runaway estimates.
+    const se = Math.min((fit.stderr[f.name] ?? 0) * 3, 0.3 * Math.max(Math.abs(v), f.scale));
+    const half = 1.96 * se;
     const lo = v - half;
     const hi = v + half;
     const atBound =
@@ -219,4 +222,11 @@ export function fmt(x: number, digits = 3): string {
   const a = Math.abs(x);
   if (a !== 0 && (a < 0.001 || a >= 1e5)) return x.toExponential(2);
   return Number(x.toPrecision(digits)).toString();
+}
+
+/** "value ± half" with the value rounded to the place of the uncertainty's second digit. */
+export function fmtPm(value: number, half: number): string {
+  if (!(half > 0) || !Number.isFinite(half)) return fmt(value);
+  const decimals = Math.max(0, 1 - Math.floor(Math.log10(half)));
+  return `${value.toFixed(Math.min(decimals, 8))} ± ${half.toFixed(Math.min(decimals, 8))}`;
 }

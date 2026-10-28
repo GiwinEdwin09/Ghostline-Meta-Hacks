@@ -122,21 +122,21 @@ export function controlsFor(ctx: SimContext): ControlSpec[] {
         decimals: 0,
         default: Math.abs(ctx.initial.theta0 ?? 0.3) / DEG,
       });
-      if (HAS_AIR.has(ctx.model_ref)) {
-        list.push(air);
-        list.push({
-          id: "mass",
-          label: "Bob mass",
-          unit: "× yours",
-          type: "range",
-          min: 0.25,
-          max: 4,
-          step: 0.05,
-          decimals: 2,
-          default: 1,
-          help: "Mass does not change the period. Damping was fitted as b/m, so a heavier bob of the same size damps more slowly.",
-        });
-      }
+      if (HAS_AIR.has(ctx.model_ref)) list.push(air);
+      list.push({
+        id: "mass",
+        label: "Bob mass",
+        unit: "× yours",
+        type: "range",
+        min: 0.25,
+        max: 4,
+        step: 0.05,
+        decimals: 2,
+        default: 1,
+        help: HAS_AIR.has(ctx.model_ref)
+          ? "Mass does not change the period. Damping was fitted as b/m, so a heavier bob of the same size damps more slowly."
+          : "Mass does not change the period. This model has no damping, so nothing else changes either.",
+      });
       break;
     }
     case "free_fall": {

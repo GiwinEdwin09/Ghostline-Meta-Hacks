@@ -13,10 +13,10 @@
     "id": "ex-pendulum",
     "fps": 60,
     "window_s": 5.5,
-    "sigma": 0.006,
+    "sigma": 0.012,
     "seed": 23,
-    "truth": { "model": "P2", "g": 9.8, "L_eff": 0.6213, "gamma": 0.012, "theta0_deg": 38 },
-    "trial2": { "window_s": 14, "theta0_deg": 28, "seed": 29 },
+    "truth": { "model": "P2", "g": 9.8, "L_eff": 0.6213, "gamma": 0.008, "theta0_deg": 50 },
+    "trial2": { "window_s": 14, "theta0_deg": 34, "seed": 29 },
     "bob_radius_m": 0.012,
     "pivot_m": [0.0, 0.7]
   },

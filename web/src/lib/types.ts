@@ -387,8 +387,11 @@ export interface GhostTrack {
 /* What-if                                                                               */
 /* ------------------------------------------------------------------------------------ */
 
+/** Systems that have a TypeScript twin in `lib/sim`. */
+export type SimulableSystem = "free_fall" | "pendulum" | "ramp" | "bounce" | "spin_down";
+
 export interface WhatIfContext {
-  system: SystemType;
+  system: SimulableSystem;
   /** Library id of the winning model, e.g. "P2". */
   model_ref: string;
   /** Fitted parameters by library name (see `lib/sim/models`). */

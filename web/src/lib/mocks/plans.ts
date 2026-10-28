@@ -29,7 +29,7 @@ const fp = {
   k: (init: number): FreeParam => ({ name: "k", init, scale: 2e-4, lower: 0, kind: "physical", unit: "s/rad", label: "k (air drag)" }),
   theta0: (init: number): FreeParam => ({ name: "theta0", init, scale: 0.05, kind: "initial_condition", unit: "rad", label: "θ₀" }),
   omega0Pend: (): FreeParam => ({ name: "omega0", init: 0, scale: 0.1, kind: "initial_condition", unit: "rad/s", label: "ω₀" }),
-  gPend: (init: number): FreeParam => ({ name: "g", init, scale: 0.4, lower: 5, upper: 15, kind: "physical", unit: "m/s²", label: "g" }),
+  gPend: (init: number): FreeParam => ({ name: "g", init, scale: 0.4, lower: 9, upper: 10.6, kind: "physical", unit: "m/s²", label: "g" }),
   gamma: (init: number): FreeParam => ({ name: "gamma", init, scale: 0.02, lower: 0, kind: "physical", unit: "1/s", label: "γ (damping)" }),
   kappa: (init: number): FreeParam => ({ name: "kappa", init, scale: 0.02, lower: 0, kind: "physical", unit: "1/rad", label: "κ (air drag)" }),
   y0: (init: number): FreeParam => ({ name: "y0", init, scale: 0.01, kind: "initial_condition", unit: "m", label: "y₀" }),
@@ -151,7 +151,7 @@ function pendulumPlans(L: number, theta0: number, gInit: number): ModelPlan[] {
         "The textbook small-angle pendulum, where the restoring force is proportional to the angle and the period does not depend on the amplitude.",
       equations_latex: String.raw`\ddot\theta=-\frac{g}{L_\mathrm{eff}}\,\theta`,
       refuting_signature:
-        "The period is the same at every amplitude. At 38° a real pendulum is about 3% slower, so the phase drifts out of step within a few swings.",
+        "The period is the same at every amplitude. At 50° a real pendulum is about 7% slower, so the phase drifts out of step within a few swings.",
       free: [fp.theta0(theta0), fp.omega0Pend(), fp.gPend(gInit)],
     },
   ];

@@ -23,7 +23,7 @@ interface Fixture {
 }
 
 describe("parity with scipy DOP853", () => {
-  for (const fx of fixtures as Fixture[]) {
+  for (const fx of fixtures as unknown as Fixture[]) {
     const label = `${fx.model} ${JSON.stringify(fx.params)}`;
     it(`${label} agrees within 1e-6`, () => {
       const model = getModel(fx.model);

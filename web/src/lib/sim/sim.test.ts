@@ -283,7 +283,7 @@ describe("what-if scenarios", () => {
     const ids = controlsFor(pendulumCtx).map((c) => c.id);
     expect(ids).toEqual(["g", "length_cm", "amplitude_deg", "air", "mass"]);
     const undamped = controlsFor({ ...pendulumCtx, model_ref: "P1" }).map((c) => c.id);
-    expect(undamped).toEqual(["g", "length_cm", "amplitude_deg"]);
+    expect(undamped).toEqual(["g", "length_cm", "amplitude_deg", "mass"]);
   });
 
   it("a ramp: shapes change the acceleration by 1/(1+beta) and friction can stop the block", () => {

@@ -42,3 +42,8 @@ next-env.d.ts
 
 # Example env files are safe to commit
 !.env.example
+
+# The repo ignores *.mp4 (raw clips). These few small synthetic clips are the mock media
+# for NEXT_PUBLIC_USE_MOCKS=1 and the landing page hero; see scripts/make-mock-media.mjs.
+!/public/*.mp4
+!/public/mock/*.mp4

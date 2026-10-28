@@ -281,9 +281,12 @@ let backendPromise: Promise<ApiBackend> | null = null;
 
 function backend(): Promise<ApiBackend> {
   if (!backendPromise) {
-    backendPromise = USE_MOCKS
-      ? import("@/lib/mocks").then((m) => m.mockBackend)
-      : Promise.resolve(httpBackend);
+    // The flag is read inline so the bundler can drop the mock chunk from production builds.
+    if (process.env.NEXT_PUBLIC_USE_MOCKS === "1") {
+      backendPromise = import("@/lib/mocks").then((m) => m.mockBackend);
+    } else {
+      backendPromise = Promise.resolve(httpBackend);
+    }
   }
   return backendPromise;
 }

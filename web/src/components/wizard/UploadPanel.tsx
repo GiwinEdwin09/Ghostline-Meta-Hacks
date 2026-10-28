@@ -1,0 +1,197 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { Button, ErrorState, Notice, cn } from "@/components/ui";
+import { api } from "@/lib/api";
+import { describeError } from "@/lib/errors";
+import { fmtBytes, fmtDuration } from "@/lib/format";
+import {
+  MAX_FILE_BYTES,
+  UploadError,
+  pendingUpload,
+  uploadFile,
+  type UploadProgress,
+} from "@/lib/upload/chunked";
+import type { TrialRole } from "@/lib/types";
+
+/**
+ * File picker plus chunked, resumable upload (build-plan Part 4). The input has no `capture`
+ * attribute, so on a phone it offers the camera roll as well as the camera, and a slow-mo
+ * clip can be picked from Photos.
+ */
+export function UploadPanel({
+  role,
+  ensureExperiment,
+  existingExperimentId,
+  onUploaded,
+}: {
+  role: TrialRole;
+  /** Creates the experiment on first use and returns its id. */
+  ensureExperiment: () => Promise<string>;
+  existingExperimentId: string | null;
+  onUploaded: (experimentId: string, trialId: string) => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [phase, setPhase] = useState<"idle" | "uploading" | "stopped" | "done">("idle");
+  const [speed, setSpeed] = useState<number | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const samples = useRef<{ t: number; bytes: number }[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const pending = useMemo(
+    () => (existingExperimentId ? pendingUpload(existingExperimentId, role) : null),
+    [existingExperimentId, role],
+  );
+
+  useEffect(() => () => controller.current?.abort(), []);
+
+  const tooBig = file !== null && file.size > MAX_FILE_BYTES;
+  // 8 Mbit/s is a conservative cellular upload speed for the estimate before we have a real one.
+  const estimate = file ? file.size / (1_000_000 / 8) : null;
+  const matchesPending = pending !== null && file !== null && pending.filename === file.name && pending.size === file.size;
+
+  const start = async () => {
+    if (!file) return;
+    setError(null);
+    setPhase("uploading");
+    samples.current = [];
+    const ctrl = new AbortController();
+    controller.current = ctrl;
+    try {
+      const experimentId = await ensureExperiment();
+      const out = await uploadFile(file, {
+        transport: api.uploads,
+        experimentId,
+        role,
+        signal: ctrl.signal,
+        onProgress: (p) => {
+          setProgress(p);
+          const now = performance.now();
+          const s = samples.current;
+          s.push({ t: now, bytes: p.sentBytes });
+          while (s.length > 2 && now - s[0].t > 6000) s.shift();
+          if (s.length > 1 && now - s[0].t > 800) {
+            setSpeed(Math.max(0, (p.sentBytes - s[0].bytes) / ((now - s[0].t) / 1000)));
+          }
+        },
+      });
+      setPhase("done");
+      onUploaded(experimentId, out.trial_id);
+    } catch (err) {
+      if (err instanceof UploadError && err.kind === "aborted") {
+        setPhase("stopped");
+        return;
+      }
+      setError(err);
+      setPhase("stopped");
+    }
+  };
+
+  const pct = progress ? Math.round((progress.sentBytes / progress.totalBytes) * 100) : 0;
+  const remaining = progress && speed && speed > 0 ? (progress.totalBytes - progress.sentBytes) / speed : null;
+
+  return (
+    <div className="space-y-4">
+      {pending && !file ? (
+        <Notice tone="cyan" title="You have an unfinished upload">
+          {pending.filename} ({fmtBytes(pending.size)}), {pending.received.length} part
+          {pending.received.length === 1 ? "" : "s"} already sent. Choose the same file again and it will continue from where it stopped.
+        </Notice>
+      ) : null}
+
+      <div className="rounded-xl border border-dashed border-line-strong p-5 text-center">
+        <input
+          ref={inputRef}
+          id={`file-${role}`}
+          type="file"
+          accept="video/*"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setFile(f);
+            setProgress(null);
+            setError(null);
+            setPhase("idle");
+          }}
+        />
+        <label
+          htmlFor={`file-${role}`}
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-line-strong bg-surface-2 px-5 text-sm font-medium hover:bg-zinc-800 focus-within:outline-2"
+        >
+          {file ? "Choose a different video" : "Choose a video"}
+        </label>
+        <p className="mt-2 text-xs text-muted">From your camera roll or your camera. Up to 1 GiB.</p>
+        {file ? (
+          <div className="mt-4 text-left text-sm">
+            <p className="break-all font-medium">{file.name}</p>
+            <p className="text-muted">
+              {fmtBytes(file.size)}
+              {estimate && phase === "idle" ? ` · about ${fmtDuration(estimate)} on a typical cellular upload` : ""}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {tooBig ? (
+        <Notice tone="red" title="That clip is over 1 GiB">
+          Trim it in Photos, or film a shorter one. Ghostline needs only the part where the object moves.
+        </Notice>
+      ) : null}
+
+      {file && phase === "idle" ? (
+        <p className="text-xs text-muted">Use Wi-Fi if you can. If the connection drops, the upload pauses and picks up where it left off.</p>
+      ) : null}
+
+      {progress && phase !== "idle" ? (
+        <div aria-live="polite">
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            aria-label="Upload progress"
+            className="h-3 overflow-hidden rounded-full bg-surface-2"
+          >
+            <div className={cn("h-full rounded-full transition-[width] duration-200", phase === "stopped" ? "bg-amber-400" : "bg-ghost")} style={{ width: `${pct}%` }} />
+          </div>
+          <p className="mt-2 text-sm tabular-nums">
+            {pct}% · {fmtBytes(progress.sentBytes)} of {fmtBytes(progress.totalBytes)}
+            {phase === "uploading" && speed ? ` · ${fmtBytes(speed)}/s` : ""}
+            {phase === "uploading" && remaining ? ` · about ${fmtDuration(remaining)} left` : ""}
+          </p>
+          {phase === "uploading" && progress.state === "retrying" ? (
+            <p className="mt-1 text-sm text-amber-300">A part didn&apos;t go through. Trying again (attempt {progress.attempt}).</p>
+          ) : null}
+          {phase === "uploading" && progress.state === "offline" ? (
+            <p className="mt-1 text-sm text-amber-300">You&apos;re offline. Waiting for the connection; your progress is saved.</p>
+          ) : null}
+          {phase === "uploading" && progress.state === "finishing" ? <p className="mt-1 text-sm text-muted">Putting the parts together…</p> : null}
+          {progress.resumed && phase === "uploading" ? <p className="mt-1 text-xs text-muted">Resumed from where it stopped.</p> : null}
+        </div>
+      ) : null}
+
+      {error ? (
+        <ErrorState
+          error={error}
+          title={error instanceof UploadError ? error.message : describeError(error).title}
+          onRetry={file ? start : undefined}
+        />
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        {phase === "uploading" ? (
+          <Button tone="ghost" onClick={() => controller.current?.abort()}>
+            Pause
+          </Button>
+        ) : (
+          <Button tone="primary" disabled={!file || tooBig || phase === "done"} onClick={start}>
+            {phase === "stopped" || matchesPending ? "Resume upload" : "Upload"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
