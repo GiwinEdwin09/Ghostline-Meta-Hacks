@@ -1,0 +1,14 @@
+{
+ "wonder_480_sha256": "479638b1c3f3d1b88c7085b10f22d50fd97a21c1089d65ad518d731180a3b1ce",
+ "sam_3s_sha256": "96162e94419dbac15e15d09eba6ba5321830bb3fa17535acf27d996d4a86c7ab",
+ "frame_size": [
+  854,
+  480
+ ],
+ "models": {
+  "physicist": "muse-wonder-1.0",
+  "scene": "muse-wonder-1.0",
+  "sam": "sam-3.1",
+  "reviewer": "meta-models/Muse-Spark-Open-816B-A42B"
+ }
+}

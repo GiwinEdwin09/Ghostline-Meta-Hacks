@@ -1,0 +1,85 @@
+{
+ "hash": "f41263f4fc8b68ce3448160dcc07e6424b2946f7d4999daf7bf5ab84e9a2faee",
+ "kind": "respond",
+ "model": "muse-wonder-1.0",
+ "request": {
+  "input": [
+   {
+    "content": [
+     {
+      "text": "What is the surface gravity on Mars, in m/s^2?",
+      "type": "input_text"
+     }
+    ],
+    "role": "user",
+    "type": "message"
+   }
+  ],
+  "max_output_tokens": 3000,
+  "model": "muse-wonder-1.0",
+  "reasoning": {
+   "effort": "low"
+  },
+  "text": {
+   "format": {
+    "name": "GravityAnswer",
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "g_m_s2": {
+       "type": "number"
+      },
+      "planet": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "planet",
+      "g_m_s2"
+     ],
+     "type": "object"
+    },
+    "strict": true,
+    "type": "json_schema"
+   }
+  }
+ },
+ "response": {
+  "cost_usd": 0.006168,
+  "id": "resp_6ae24bf1abc99fa5f1d04c13",
+  "incomplete_reason": null,
+  "model": "muse-wonder-1.0",
+  "output": [
+   {
+    "id": "rs_6ae24bf1abc99fa5f1d04c13:rs_01a183f8a7e6753e93e942cee061a419",
+    "status": "completed",
+    "summary": [],
+    "type": "reasoning"
+   },
+   {
+    "content": [
+     {
+      "annotations": [],
+      "logprobs": [],
+      "text": "{ \"g_m_s2\": 3.71, \"planet\": \"Mars\" }",
+      "type": "output_text"
+     }
+    ],
+    "id": "msg_01a183f8b40075ad84dba512d60acb3d",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+   }
+  ],
+  "output_text": "{ \"g_m_s2\": 3.71, \"planet\": \"Mars\" }",
+  "repairs": 0,
+  "status": "completed",
+  "usage": {
+   "cached_tokens": 0,
+   "input_tokens": 22,
+   "output_tokens": 304,
+   "reasoning_tokens": 276
+  }
+ },
+ "version": 1
+}

@@ -1,0 +1,101 @@
+{
+ "hash": "6a34667fa88db8468b50a761a63c2e894e8344eed67c98ce49323445c20559e2",
+ "kind": "respond",
+ "model": "muse-wonder-1.0",
+ "request": {
+  "input": [
+   {
+    "content": [
+     {
+      "text": "Draw a bounding box around the object to track on the frame shown: the orange ball.\nThe frame is 854 x 480 pixels. Give pixel coordinates in that frame: x1, y1 is the\ntop-left corner and x2, y2 the bottom-right corner, with x2 > x1 and y2 > y1. Set found to false\nif the object is not visible on this frame.",
+      "type": "input_text"
+     },
+     {
+      "image_url": "data:image/png;sha256=9f7c7730edb93c30771f5545b369f151a37d8387eb7de9bfc6b30f13842243ac",
+      "type": "input_image"
+     }
+    ],
+    "role": "user",
+    "type": "message"
+   }
+  ],
+  "max_output_tokens": 8000,
+  "model": "muse-wonder-1.0",
+  "reasoning": {
+   "effort": "low"
+  },
+  "text": {
+   "format": {
+    "name": "BoxLocation",
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "found": {
+       "type": "boolean"
+      },
+      "x1": {
+       "type": "integer"
+      },
+      "x2": {
+       "type": "integer"
+      },
+      "y1": {
+       "type": "integer"
+      },
+      "y2": {
+       "type": "integer"
+      }
+     },
+     "required": [
+      "found",
+      "x1",
+      "y1",
+      "x2",
+      "y2"
+     ],
+     "type": "object"
+    },
+    "strict": true,
+    "type": "json_schema"
+   }
+  }
+ },
+ "response": {
+  "cost_usd": 0.01318,
+  "id": "resp_6ae24c4389f03b665a0f487f",
+  "incomplete_reason": null,
+  "model": "muse-wonder-1.0",
+  "output": [
+   {
+    "id": "rs_6ae24c4389f03b665a0f487f:rs_01a183f9e8e671c39a5df3870e645ce8",
+    "status": "completed",
+    "summary": [],
+    "type": "reasoning"
+   },
+   {
+    "content": [
+     {
+      "annotations": [],
+      "logprobs": [],
+      "text": "{\"found\": true, \"x1\": 503, \"x2\": 531, \"y1\": 354, \"y2\": 384}",
+      "type": "output_text"
+     }
+    ],
+    "id": "msg_01a183f9fcb370e9a7e8d6f552a7d69e",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+   }
+  ],
+  "output_text": "{\"found\": true, \"x1\": 503, \"x2\": 531, \"y1\": 354, \"y2\": 384}",
+  "repairs": 0,
+  "status": "completed",
+  "usage": {
+   "cached_tokens": 0,
+   "input_tokens": 605,
+   "output_tokens": 538,
+   "reasoning_tokens": 496
+  }
+ },
+ "version": 1
+}

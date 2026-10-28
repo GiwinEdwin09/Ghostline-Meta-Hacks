@@ -1,0 +1,89 @@
+{
+ "hash": "9d11db9b5b6e819adbc3ccd962bb5a8a34a778483046b79ab80f57e9bafd2e98",
+ "kind": "respond",
+ "model": "muse-wonder-1.0",
+ "request": {
+  "input": [
+   {
+    "content": [
+     {
+      "text": "SAM 3.1 could not find \"red cube\" in this video. It found nothing, or the wrong object. Look at\nthe frame and write a different SAM prompt for the same object: a short noun phrase naming one\nconcrete object, with a distinguishing color or material. No verbs, questions, lists, negation\nor position words. Do not repeat a prompt that already failed: \"red cube\".\nObject to track: the ball that bounces",
+      "type": "input_text"
+     },
+     {
+      "image_url": "data:image/png;sha256=9f7c7730edb93c30771f5545b369f151a37d8387eb7de9bfc6b30f13842243ac",
+      "type": "input_image"
+     }
+    ],
+    "role": "user",
+    "type": "message"
+   }
+  ],
+  "max_output_tokens": 8000,
+  "model": "muse-wonder-1.0",
+  "reasoning": {
+   "effort": "low"
+  },
+  "text": {
+   "format": {
+    "name": "PromptSuggestion",
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "reasoning": {
+       "type": "string"
+      },
+      "sam_prompt": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "sam_prompt",
+      "reasoning"
+     ],
+     "type": "object"
+    },
+    "strict": true,
+    "type": "json_schema"
+   }
+  }
+ },
+ "response": {
+  "cost_usd": 0.009872,
+  "id": "resp_6ae24c3e136be503bf084f42",
+  "incomplete_reason": null,
+  "model": "muse-wonder-1.0",
+  "output": [
+   {
+    "id": "rs_6ae24c3e136be503bf084f42:rs_01a183f9d37c71c3bc5831c3f73ad4af",
+    "status": "completed",
+    "summary": [],
+    "type": "reasoning"
+   },
+   {
+    "content": [
+     {
+      "annotations": [],
+      "logprobs": [],
+      "text": "{\"reasoning\": \"The bouncing object in the frame is the orange sphere with a highlight, not a cube. A short noun phrase with its distinguishing color is needed.\", \"sam_prompt\": \"orange ball\"}",
+      "type": "output_text"
+     }
+    ],
+    "id": "msg_01a183f9df09749a891fae3d65fced48",
+    "role": "assistant",
+    "status": "completed",
+    "type": "message"
+   }
+  ],
+  "output_text": "{\"reasoning\": \"The bouncing object in the frame is the orange sphere with a highlight, not a cube. A short noun phrase with its distinguishing color is needed.\", \"sam_prompt\": \"orange ball\"}",
+  "repairs": 0,
+  "status": "completed",
+  "usage": {
+   "cached_tokens": 0,
+   "input_tokens": 613,
+   "output_tokens": 371,
+   "reasoning_tokens": 320
+  }
+ },
+ "version": 1
+}
