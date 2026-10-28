@@ -23,3 +23,6 @@ out/
 *.mov
 *.MOV
 .DS_Store
+
+# Subagent worktrees
+.claude/worktrees/
