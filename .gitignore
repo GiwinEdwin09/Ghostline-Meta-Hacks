@@ -1,0 +1,25 @@
+# Private until the submission version is ready (the GitHub repo is public)
+ghostline-pitch.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Local data and OS files
+*.mp4
+*.mov
+*.MOV
+.DS_Store

@@ -1,0 +1,1 @@
+The ghost (your model's prediction) drifted from the real object on a new trial. You see the error over time and frames around the moment it diverged, with the ghost and the real object both visible. Diagnose the most likely missing or wrong physics in one or two sentences, propose a revised model, and state what its prediction should look like if you're right.
