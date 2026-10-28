@@ -13,8 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
-      - run: uv run ruff format --check backend
-      - run: uv run ruff check backend
+      - run: uv run ruff format --check backend scripts
+      - run: uv run ruff check backend scripts
       - run: uv run pytest
 
   web:
