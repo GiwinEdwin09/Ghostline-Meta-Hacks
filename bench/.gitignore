@@ -1,0 +1,4 @@
+# The filmed clips and their audio are large and stay on the laptop.
+clips/
+# Per-clip progress of an interrupted run (experiment ids, upload ids). Delete to start over.
+state/
