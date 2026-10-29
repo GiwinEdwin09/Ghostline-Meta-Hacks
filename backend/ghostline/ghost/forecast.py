@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from ghostline.physics.harness.fitting import Dataset, Problem, fit
 from ghostline.physics.harness.schema import (
     BootstrapSpec,
     FitJob,
@@ -24,6 +25,8 @@ from ghostline.physics.harness.schema import (
     ModelSpec,
     SimulateSpec,
 )
+from ghostline.physics.library import ParamSpec
+from ghostline.physics.library.base import clip_spec, poly_start
 from ghostline.physics.runner import Runner
 
 from .geometry import Geometry, make_geometry
@@ -32,6 +35,7 @@ from .series import TrialSeries
 from .specs import ModelInfo, model_info, with_observables
 
 Z_95 = 1.959964
+MIN_LAUNCH_POINTS = 8
 MAX_DRAW_GRID = 150  # times at which the Monte Carlo draws are evaluated; the spread is smooth
 
 
@@ -127,18 +131,25 @@ def fit_initial_conditions(
     trial2: TrialSeries,
     info: ModelInfo,
 ) -> ICFit:
-    """Fit only the initial conditions, to trial 2's launch window, with the law held fixed."""
-    rows = trial2.launch_rows()
+    """Fit only the initial conditions, to trial 2's launch window, with the law held fixed.
+
+    Library models are fitted in this process with starting points of our own: the harness's
+    data-driven guesses (a frequency from the zero crossings, say) assume a window of at least a
+    swing or two, and a launch window can be much shorter. Wonder-written models go through the
+    runner, which is the Sandbox.
+    """
     missing = [n for n in info.frozen_names if n not in frozen.values]
     if missing:
         raise GhostError(f"The first clip's fit has no value for {missing}.")
     fixed = {n: frozen.values[n] for n in info.frozen_names}
+    if info.instance is not None:
+        return _fit_library(info, fixed, frozen, trial2)
     pinned = with_observables(spec, info.observables).model_copy(update={"fixed": fixed})
     job = FitJob(
         job_id=f"ghost-launch-{spec.id}",
         mode="final",
         system=system,
-        data=trial2.series_data(info.observables, rows),
+        data=trial2.series_data(info.observables, trial2.launch_rows()),
         constants=frozen.constants,
         models=[pinned],
         bootstrap=BootstrapSpec(n=0),
@@ -155,6 +166,60 @@ def fit_initial_conditions(
         at_bound=[p.name for p in free if p.at_bound],
         rmse=model.full.train.rmse,
         n_points=model.full.n_train,
+    )
+
+
+def _launch_specs(model, ds: Dataset, constants, tau: np.ndarray) -> dict[str, ParamSpec]:
+    """Parameter specs for the launch fit. The model's own guesses when they work on this short
+    window; otherwise its defaults, with the start and rate taken from a quadratic through the
+    launch data."""
+    try:
+        return model.fit_setup(tau, ds.obs, constants, ds.segment)
+    except Exception:
+        specs = {n: s.model_copy() for n, s in model.params.items()}
+        names = [n for n, s in specs.items() if s.kind == "initial_condition"]
+        y = ds.obs[model.observables[0]]
+        c = poly_start(tau, y, 2)
+        for name, guess in zip(names[:2], c[:2], strict=False):
+            s = specs[name]
+            specs[name] = clip_spec(guess, s.lower, s.upper, s.unit, s.kind)
+        return specs
+
+
+def _fit_library(
+    info: ModelInfo, fixed: dict[str, float], frozen: FrozenFit, trial2: TrialSeries
+) -> ICFit:
+    model = info.instance
+    assert model is not None
+    ds = Dataset.from_series(trial2.series_data(info.observables, trial2.launch_rows()))
+    ds = ds.for_model(model)
+    if ds.n < MIN_LAUNCH_POINTS:
+        raise GhostError(
+            f"The launch window has only {ds.n} usable points; the second clip is too short "
+            "or too poorly tracked to start the ghost."
+        )
+    t0 = float(ds.t[0])
+    tau = ds.t - t0
+    constants = model.prepare(tau, ds.obs, frozen.constants)
+    specs = _launch_specs(model, ds, constants, tau)
+    problem = Problem(model, ds, constants, specs, fixed, t0)
+    outcome = fit(problem, n_starts=4, seed=0)
+    if not outcome.values:
+        raise GhostError(f"{info.id} has no initial conditions to fit.")
+    names = list(outcome.values)
+    cov = outcome.cov_forecast if outcome.cov_forecast is not None else outcome.cov
+    se = np.sqrt(np.clip(np.diag(outcome.cov), 0, None)) if outcome.cov is not None else None
+    p = {**constants, **fixed, **outcome.values}
+    pred = np.asarray(model.predict(tau, p), float)
+    obs = np.vstack([ds.obs[o] for o in model.observables])
+    return ICFit(
+        values=dict(outcome.values),
+        se={n: float(se[i]) if se is not None else 0.0 for i, n in enumerate(names)},
+        at_bound=[n for n, b in outcome.at_bound.items() if b],
+        rmse=float(np.sqrt(np.mean((obs - pred) ** 2))),
+        n_points=ds.n,
+        names=names,
+        cov=cov,
     )
 
 
@@ -238,6 +303,7 @@ def forecast_trial(
         obs=obs,
         xy=xy,
         angle=geometry.angle(obs),
+        anchor_xy=geometry.anchor,
         spread_mm=spread,
         ic=ic,
         launch_end_t=float(launch["t"].iloc[-1]),
@@ -280,10 +346,8 @@ def _spread(
         for name, sigma in frozen.sigma.items():
             if name in p:
                 p[name] = _clip(p[name] + sigma * rng.standard_normal(), info.params.get(name))
-        for name, value in ic.values.items():
-            p[name] = _clip(
-                value + ic.se.get(name, 0.0) * rng.standard_normal(), info.params.get(name)
-            )
+        for name, value in ic_draw(ic, rng).items():
+            p[name] = _clip(value, info.params.get(name))
         sets.append(p)
     try:
         sims = _simulate(runner, spec, system, constants, grid, sets)
@@ -295,3 +359,16 @@ def _spread(
     var = pos.var(axis=0, ddof=1).sum(axis=1)  # variance of x plus variance of y
     spread = 1000.0 * np.sqrt(var)
     return np.interp(t, grid, spread)
+
+
+def ic_draw(ic: ICFit, rng: np.random.Generator) -> dict[str, float]:
+    """One draw of the initial conditions: jointly normal when the fit kept its covariance (the
+    start and the rate are strongly correlated over a short window), else independent."""
+    names = list(ic.values)
+    mean = np.array([ic.values[n] for n in names])
+    if ic.cov is not None and ic.cov.shape == (len(names), len(names)):
+        w, v = np.linalg.eigh(0.5 * (ic.cov + ic.cov.T))
+        draw = mean + (v * np.sqrt(np.clip(w, 0.0, None))) @ rng.standard_normal(len(names))
+    else:
+        draw = mean + np.array([ic.se.get(n, 0.0) for n in names]) * rng.standard_normal(len(names))
+    return dict(zip(names, draw.tolist(), strict=True))

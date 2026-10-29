@@ -62,6 +62,8 @@ class ICFit:
     at_bound: list[str]
     rmse: float | None = None
     n_points: int = 0
+    names: list[str] = field(default_factory=list)  # the order of `cov`
+    cov: np.ndarray | None = None  # covariance of the fitted values, when the fit kept it
 
 
 @dataclass
@@ -87,6 +89,7 @@ class Forecast:
     obs: np.ndarray  # (n_obs, n) predicted observables
     xy: np.ndarray  # (n, 2) predicted world position of the tracked point, metres
     angle: np.ndarray | None  # (n,) predicted rotation angle of the object, spinners only
+    anchor_xy: np.ndarray | None  # the pivot in world metres, for the ghost string
     spread_mm: np.ndarray  # (n,) one-sigma spread across the Monte Carlo draws
     ic: ICFit
     launch_end_t: float  # master time where the launch window ends
