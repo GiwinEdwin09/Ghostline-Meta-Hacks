@@ -95,6 +95,22 @@ def test_subprocess_runner_follows_the_sandbox_contract():
         assert param(a, "g").value == pytest.approx(param(b, "g").value, rel=1e-6)
 
 
+def test_module_entry_point_matches_the_script_entry_point(tmp_path):
+    import subprocess
+    import sys
+
+    job = drop_case().job(["FF0"], plots=False)
+    (tmp_path / "job.json").write_text(job.model_dump_json())
+
+    subprocess.run(
+        [sys.executable, "-m", "ghostline.physics.harness.run_fit", str(tmp_path / "job.json")],
+        check=True, cwd=tmp_path,
+    )  # fmt: skip
+
+    result = FitResult.model_validate_json((tmp_path / "result.json").read_text())
+    assert result.model("FF0").status == "ok"
+
+
 def test_worker_pool_gives_the_same_answer_as_one_process():
     job = drop_case().job(["FF0", "FF1", "FF2"], plots=False)
 
