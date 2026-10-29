@@ -205,15 +205,15 @@ export function Wizard() {
                   label="Normal video, 60 fps"
                 />
                 <Radio
-                  checked={mode === "slowmo"}
+                  checked={mode === "slow_mo"}
                   onChange={() => {
-                    setMode("slowmo");
+                    setMode("slow_mo");
                     setFps("240");
                   }}
                   label="Slow-mo, 240 fps"
                 />
               </div>
-              {mode === "slowmo" ? (
+              {mode === "slow_mo" ? (
                 <p className="mt-2 text-xs text-muted">
                   Slow-mo is best for drops and bounces. Phones sometimes re-time slow-mo clips when they are exported; Ghostline checks for that.
                 </p>
@@ -412,7 +412,7 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
             <div>
               <dt className="text-xs text-muted">Capture</dt>
               <dd>
-                {timing.declared_mode === "slowmo" ? "Slow-mo" : "Normal video"}, {timing.detected_fps} fps
+                {timing.declared_mode === "slow_mo" ? "Slow-mo" : "Normal video"}, {timing.detected_fps} fps
               </dd>
             </div>
             <div>

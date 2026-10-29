@@ -38,6 +38,7 @@ from ghostline.calib.model import Calibration
 from ghostline.store.core_schemas import Conclusion, Confidence, ParamSpec
 from ghostline.store.records import (
     Event,
+    EventKind,
     Experiment,
     FitRecord,
     GhostRender,
@@ -368,7 +369,7 @@ class ParamEstimateView(BaseModel):
     ci_high: float
     unit: str
     kind: Literal["physical", "initial_condition", "nuisance"]
-    at_bound: bool
+    at_bound: bool | None = None
 
 
 class FitDiagnosticsView(BaseModel):
@@ -398,7 +399,7 @@ class FitView(BaseModel):
     params: list[ParamEstimateView]
     train_rmse: float
     heldout_rmse: float
-    heldout_ci: list[float]
+    heldout_ci: tuple[float, float]
     rmse_unit: str
     nrmse: float
     time_to_divergence_s: float | None
@@ -473,7 +474,7 @@ def fit_view(
         params=params,
         train_rmse=_num(fit.train_rmse),
         heldout_rmse=_num(fit.heldout_rmse),
-        heldout_ci=[_num(ci[0]), _num(ci[-1])],
+        heldout_ci=(_num(ci[0]), _num(ci[-1])),
         rmse_unit=str(d.get("rmse_unit") or unit),
         nrmse=_num(d.get("nrmse")),
         time_to_divergence_s=d.get("time_to_divergence_s"),
@@ -552,7 +553,7 @@ class QuantityView(BaseModel):
     ci_high: float
     unit: str
     budget: list[BudgetTermView] | None
-    note: str | None
+    note: str | None = None
 
 
 class RejectedView(BaseModel):
@@ -748,11 +749,11 @@ class WhatIfView(BaseModel):
     params: dict[str, float]
     fixed: dict[str, float]
     initial: dict[str, float]
-    measured_range: dict[str, list[float]]
+    measured_range: dict[str, tuple[float, float]]
     object: ObjectView
     still_url: str | None
     sim_supported: bool
-    anchor_m: list[float]
+    anchor_m: tuple[float, float]
 
 
 # --- notebook events ----------------------------------------------------
@@ -774,7 +775,7 @@ class EventView(BaseModel):
     ts: str
     phase: str
     actor: Literal["wonder", "spark_open", "harness", "sam", "system", "user"]
-    kind: str
+    kind: EventKind
     title: str
     body_md: str
     data: dict[str, Any]
@@ -816,6 +817,19 @@ class SetupView(BaseModel):
 class DeclaredCaptureView(BaseModel):
     mode: Literal["normal", "slow_mo"]
     fps: float | None
+
+
+class GhostTrackView(BaseModel):
+    """The contents of ghost/v{n}_track.json, written by the stage that renders the ghost (Part 16)
+    and read by the browser. Per-frame arrays line up with `t`; pixels are master pixels."""
+
+    t: list[float]
+    error_mm: list[float]
+    predicted_px: list[list[float]]
+    actual_px: list[list[float]]
+    tau_mm: float
+    onset_s: float | None
+    launch_window_s: float
 
 
 class ExperimentSummaryView(BaseModel):

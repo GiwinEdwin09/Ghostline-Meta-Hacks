@@ -42,7 +42,7 @@ export function PipelineStepper({
   const phases: readonly string[] = mode === "prove" ? PROVE_PHASES : PIPELINE_PHASES;
   const active = job.status === "queued" || job.status === "running";
   const elapsed = useElapsedSeconds(job.started_at, active);
-  const current = phaseToStep(job.phase, phases);
+  const current = phaseToStep(job.phase ?? "", phases);
   const failed = job.status === "failed";
 
   return (

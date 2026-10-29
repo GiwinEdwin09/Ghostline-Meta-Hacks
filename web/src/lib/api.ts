@@ -10,6 +10,7 @@ import type {
   Experiment,
   ExperimentSummary,
   ExplainRequest,
+  ExplainResponse,
   ExportFile,
   GhostTrack,
   Job,
@@ -50,11 +51,13 @@ export function apiUrl(
 
 /**
  * Turn a media field into a URL a <video>, <img> or fetch can load: absolute URLs and
- * site paths are used as they are, anything else is a path under `GET /api/media/`.
+ * site paths are used as they are, "api/..." paths (the computed trajectory JSON) are routes of
+ * the API, and anything else is a path under `GET /api/media/`.
  */
 export function resolveMedia(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
   if (/^(https?:|data:|blob:|\/)/.test(url)) return url;
+  if (url.startsWith("api/")) return `${apiBase()}/${url}`;
   return apiUrl(`media/${url}`);
 }
 
@@ -74,7 +77,7 @@ export interface ApiBackend {
   revise(experimentId: string): Promise<Job | null>;
   rerunModel(experimentId: string, modelId: string, req: RerunRequest): Promise<Job | null>;
   simulate(experimentId: string, req: SimulateRequest): Promise<SimulateResponse>;
-  explain(experimentId: string, req: ExplainRequest): Promise<{ text: string }>;
+  explain(experimentId: string, req: ExplainRequest): Promise<ExplainResponse>;
   getExport(experimentId: string, format: "json" | "pybullet", massG: number | null): Promise<ExportFile>;
   verifyExport(experimentId: string): Promise<Job | null>;
   deleteExperiment(experimentId: string): Promise<void>;
@@ -206,13 +209,29 @@ function filenameFrom(res: Response, fallback: string): string {
   return m ? decodeURIComponent(m[1]) : fallback;
 }
 
+/** The wizard's flat form as the nested body of `POST /experiments`. */
+export function createBody(req: CreateExperimentRequest) {
+  return {
+    title: req.title,
+    description: req.description,
+    system_hint: req.system_hint === "unknown" ? "auto" : req.system_hint,
+    declared_capture: req.declared_capture,
+    setup: {
+      plane_offset_cm: req.plane_offset_cm,
+      paper: req.paper,
+      pendulum_length_cm: req.pendulum_length_cm,
+    },
+  };
+}
+
 const httpBackend: ApiBackend = {
   health: () => request<Health>("GET", "health"),
   listExamples: () => request<ExperimentSummary[]>("GET", "experiments", { query: { examples: "true" } }),
   getExperiment: (id) => request<Experiment>("GET", `experiments/${encodeURIComponent(id)}`),
   getEvents: (id, after) =>
     request<EventsResponse>("GET", `experiments/${encodeURIComponent(id)}/events`, { query: { after } }),
-  createExperiment: (req) => request<{ id: string }>("POST", "experiments", { body: req, write: true }),
+  createExperiment: (req) =>
+    request<{ id: string }>("POST", "experiments", { body: createBody(req), write: true }),
   setTrim: (trialId, trim) =>
     request<void>("POST", `trials/${encodeURIComponent(trialId)}/trim`, { body: trim, write: true }),
   analyze: (id) => request<Job | null>("POST", `experiments/${encodeURIComponent(id)}/analyze`, { write: true }),
@@ -231,7 +250,7 @@ const httpBackend: ApiBackend = {
   simulate: (id, req) =>
     request<SimulateResponse>("POST", `experiments/${encodeURIComponent(id)}/simulate`, { body: req }),
   explain: (id, req) =>
-    request<{ text: string }>("POST", `experiments/${encodeURIComponent(id)}/explain`, { body: req, write: true }),
+    request<ExplainResponse>("POST", `experiments/${encodeURIComponent(id)}/explain`, { body: req, write: true }),
   getExport: async (id, format, massG) => {
     const res = await send(
       "GET",
