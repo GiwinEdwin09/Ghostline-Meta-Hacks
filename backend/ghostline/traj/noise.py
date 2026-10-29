@@ -95,9 +95,13 @@ def local_fit(
     return LocalFit(value, slope, resid, factor, valid)
 
 
-def noise_sigma(fit: LocalFit) -> np.ndarray:
-    """Robust std of the (leverage-corrected) residuals, per column."""
-    r = fit.resid[fit.valid]
+def noise_sigma(fit: LocalFit, use: np.ndarray | None = None) -> np.ndarray:
+    """Robust std of the (leverage-corrected) residuals, per column.
+
+    `use` optionally restricts the points, to leave out the neighbourhood of a kink (a release or
+    stop), where a smooth cubic can't follow the motion and the residual isn't noise.
+    """
+    r = fit.resid[fit.valid if use is None else fit.valid & use]
     if r.ndim == 1:
         r = r[:, None]
     return np.array([robust_std(r[:, j]) for j in range(r.shape[1])])

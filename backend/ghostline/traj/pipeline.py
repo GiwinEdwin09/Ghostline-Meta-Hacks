@@ -34,7 +34,7 @@ from .model import (
     TrackSeries,
     TrajectoryResult,
 )
-from .noise import local_fit, noise_sigma, robust_std
+from .noise import WINDOW, local_fit, noise_sigma, robust_std
 
 FLIGHT_SYSTEMS = ("free_fall", "projectile", "bounce")
 MIN_SAMPLES = 10
@@ -256,12 +256,19 @@ def build_trajectory(
 
     # final fits: noise, velocities
     fit = local_fit(t, xy, segment)
-    sig_xy = noise_sigma(fit) if spin_sigma is None else np.array([spin_sigma, spin_sigma])
+    # leave out the neighbourhood of the release and the stop: the motion has a kink there
+    margin = (WINDOW // 2) * float(np.median(np.diff(t)))
+    away = np.ones(len(t), bool)
+    for event_t in (ev.release_t, ev.stop_t):
+        if event_t is not None:
+            away &= np.abs(t - event_t) > margin
+    away = away if away.sum() >= MIN_SAMPLES else None
+    sig_xy = noise_sigma(fit, away) if spin_sigma is None else np.array([spin_sigma, spin_sigma])
     sigma_pos = float(np.sqrt(np.mean(sig_xy**2)))
     sigma_angle = omega = None
     if angle is not None:
         afit = local_fit(t, angle, segment)
-        sigma_angle = float(noise_sigma(afit)[0])
+        sigma_angle = float(noise_sigma(afit, away)[0])
         omega = afit.slope
     s_along = None
     if system == "ramp":
