@@ -348,3 +348,18 @@ def test_ninety_five_percent_intervals_cover_the_truth_about_95_percent_of_the_t
         hits += g.ci_low <= G <= g.ci_high
 
     assert 0.88 <= hits / runs <= 1.0
+
+
+def test_incomplete_calibration_refits_are_refused_instead_of_understating_the_budget():
+    est = ParamEstimate(name="g", value=9.8, ci_low=9.7, ci_high=9.9)
+    fit = SplitFit(
+        split=1.0, t_split=0, n_train=1, n_test=0, converged=True, params=[est], train=diag()
+    )
+    cut_short = ModelResult(
+        id="P1", status="ok", full=fit, perturbations_requested=50, replicates=[{"g": 9.8}] * 3
+    )
+
+    with pytest.raises(ValueError, match="calibration refits"):
+        final_quantities(cut_short, CalibrationBudget(sigma_scale=0.01))
+    # With no calibration uncertainty to estimate there is nothing to understate.
+    assert final_quantities(cut_short, CalibrationBudget())[0].name == "g"

@@ -164,6 +164,7 @@ class ModelResult(BaseModel):
     bic: float | None = None
     bootstrap_requested: int = 0
     bootstrap_done: int = 0
+    perturbations_requested: int = 0
     replicates: list[dict[str, float]] = Field(default_factory=list)
     replicate_eps: list[dict[str, float]] = Field(default_factory=list)
     plots: list[PlotRef] = Field(default_factory=list)

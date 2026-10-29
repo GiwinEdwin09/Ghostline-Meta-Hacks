@@ -129,6 +129,7 @@ def analyze(
             bootstrap=BootstrapSpec(n=n_boot, seed=seed),
             perturbations=calibration_perturbations(budget, constants, n_perturb, seed),
             plots=plots,
+            time_limit_s=90.0,
         )
         final = runner.run(final_job).models[0]
         if final.status == "ok":

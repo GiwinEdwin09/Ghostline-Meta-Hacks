@@ -150,12 +150,15 @@ def _final(model, ds, constants, fixed, job, deadline, result, workdir):
         model, ds, constants, fixed, None,
         n_starts=job.n_starts, seed=job.bootstrap.seed, deadline=deadline,
     )  # fmt: skip
-    if job.bootstrap.n > 0:
-        _bootstrap(model, ds, constants, fixed, outcome, full, job, deadline, result)
+    # The calibration refits set the headline uncertainty, so they run before the bootstrap
+    # can use up the time limit.
     if job.perturbations:
+        result.perturbations_requested = len(job.perturbations)
         result.replicates, result.replicate_eps = fitting.perturbed_refits(
             model, ds, constants, fixed, outcome, job.perturbations, deadline
         )
+    if job.bootstrap.n > 0:
+        _bootstrap(model, ds, constants, fixed, outcome, full, job, deadline, result)
     result.full = full
     result.aic = full.train.chi2 + 2 * len(outcome.values)
     result.bic = full.train.chi2 + len(outcome.values) * float(np.log(max(ds.n, 2)))

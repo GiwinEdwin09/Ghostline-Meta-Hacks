@@ -404,6 +404,17 @@ def final_quantities(
     """
     if final.full is None:
         raise ValueError("final result has no fit")
+    wanted = final.perturbations_requested
+    needed = max(8, wanted // 2)
+    if (
+        wanted
+        and len(final.replicates) < needed
+        and any(budget.sigma(k) > 0 for k in CALIBRATION_KEYS)
+    ):
+        raise ValueError(
+            f"only {len(final.replicates)} of {wanted} calibration refits finished; "
+            "the calibration uncertainty would be understated. Raise time_limit_s."
+        )
     quantities = []
     for est in final.full.params:
         if est.kind != "physical" and not est.derived:

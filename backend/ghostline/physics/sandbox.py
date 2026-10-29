@@ -127,7 +127,7 @@ class FitSandbox:
         proc.wait()
         return proc.returncode, proc.stdout.read(), proc.stderr.read()
 
-    def run(self, job: FitJob, exec_timeout: int = 120) -> FitResult:
+    def run(self, job: FitJob, exec_timeout: int = 180) -> FitResult:
         sandbox = self._sandbox
         assert sandbox is not None, "start the sandbox first"
         job = job.model_copy(update={"workers": max(job.workers, self.cpu)})
