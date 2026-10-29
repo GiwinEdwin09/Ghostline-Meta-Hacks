@@ -10,6 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
+
 from ghostline.jobs.context import JobContext
 from ghostline.jobs.errors import StageError
 from ghostline.jobs.stage_types import RevisionResult
@@ -176,7 +178,13 @@ def _inputs(
 ):  # fmt: skip
     """The brief, the error plot and four annotated frames, saved next to the ghost video."""
     t0 = float(forecast.t[0])
-    plot = error_plot_png(div, t0, plan.launch_end_rel, f"ghost v{version} ({spec.id})")
+    observable = model_info(spec, system, ("y",)).observables[0]
+    rows = trial2.motion[trial2.motion["frame"].isin(forecast.frames)]
+    series = None
+    if observable in rows:
+        predicted = np.interp(rows["frame"], forecast.frames, forecast.obs[0])
+        series = (observable, rows["t"].to_numpy() - t0, rows[observable].to_numpy(), predicted)
+    plot = error_plot_png(div, t0, plan.launch_end_rel, f"ghost v{version} ({spec.id})", series)
     picks = frame_indices(plan, onset_rel, plan.error_mm)
     jpegs = frame_jpegs(master, plan, picks)
     if spec.library_ref:
@@ -190,7 +198,7 @@ def _inputs(
         system=system, model=info, frozen=frozen, forecast=forecast, div=div, trial1=trial1,
         trial2=trial2, t0=t0, frame_times=[float(plan.t_rel[i]) for i in picks],
     )  # fmt: skip
-    labels = ["Image 1: error against time."] + [
+    labels = ["Image 1: the drift plot."] + [
         f"Image {k + 2}: frame at {plan.t_rel[i]:.2f} s." for k, i in enumerate(picks)
     ]
     folder = ctx.paths.ghost_video(experiment.id, version).parent

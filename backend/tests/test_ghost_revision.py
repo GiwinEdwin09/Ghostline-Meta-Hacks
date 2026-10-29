@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import numpy as np
 import pytest
+from fixtures.ghost.replay import recorded_reply
 from fixtures.ghost.rig import pendulum_rig
 
 from ghostline.config import get_settings
@@ -18,8 +19,8 @@ from ghostline.store.core_schemas import Review
 from ghostline.store.records import GhostRender
 from ghostline.store.volume import VolumePaths
 
-GAMMA = 0.05  # 1/s: the true damping, which an undamped v1 knows nothing about
-D1, D2 = 6.0, 12.0
+GAMMA = 0.15  # 1/s: the true damping, which an undamped v1 knows nothing about
+D1, D2 = 5.0, 10.0
 
 
 def damping_reply(source="library", ref="P2") -> DiagnosisReply:
@@ -56,7 +57,7 @@ def damped(tmp_path_factory):
 
     def ask(inputs):
         asked.append(inputs)
-        return damping_reply()
+        return recorded_reply()  # what Wonder said when it looked at this drift
 
     result = diagnose_revision(rig.ctx, rig.experiment, ghost, ask=ask)
     return rig, v1, ghost, result, asked
@@ -65,7 +66,7 @@ def damped(tmp_path_factory):
 def test_an_undamped_v1_drifts_on_a_damped_trial(damped):
     _, v1, _, _, _ = damped
     assert v1.divergence_onset_s is not None
-    assert 2.0 < v1.divergence_onset_s < 6.0  # well after the launch window, before the end
+    assert 1.0 < v1.divergence_onset_s < 4.0  # after the launch window, long before the end
     assert v1.max_error_mm > 3 * v1.threshold_mm
 
 

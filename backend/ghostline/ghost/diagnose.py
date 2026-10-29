@@ -79,24 +79,45 @@ class DiagnosisInputs:
 Ask = Callable[[DiagnosisInputs], DiagnosisReply]
 
 
-def error_plot_png(div: Divergence, t0: float, launch_end_rel: float, ghost_label: str) -> bytes:
-    """Error against time, with the threshold bands, the launch window and the onset marked."""
+def error_plot_png(
+    div: Divergence,
+    t0: float,
+    launch_end_rel: float,
+    ghost_label: str,
+    series: tuple[str, np.ndarray, np.ndarray, np.ndarray] | None = None,
+) -> bytes:
+    """The drift against time. Below: the distance from the real object, with the threshold
+    bands, the launch window and the onset. Above, when `series` (name, t, measured, predicted)
+    is given: the measured motion and the ghost's prediction, which shows how the swing, the
+    spin or the fall departs from the law (a shrinking envelope, a drifting phase)."""
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(8, 4.5), dpi=100)
+    rows = 2 if series is not None else 1
+    fig, axes = plt.subplots(
+        rows, 1, figsize=(8, 3.2 * rows + 0.8), dpi=100, sharex=True, squeeze=False
+    )
+    ax = axes[-1][0]
+    if series is not None:
+        name, t_s, measured, predicted = series
+        top = axes[0][0]
+        top.axvspan(0, launch_end_rel, color="#a78bfa", alpha=0.18)
+        top.plot(t_s, measured, ".", ms=3, color="#333333", label="measured (real object)")
+        top.plot(t_s, predicted, "-", lw=1.3, color="#0a7ea4", label=f"{ghost_label} prediction")
+        top.set_ylabel(name)
+        top.set_title("The real motion and the ghost's prediction")
+        top.legend(loc="upper right", fontsize=8)
     t = div.t - t0
     ax.axvspan(0, launch_end_rel, color="#a78bfa", alpha=0.18, label="launch window (fitted)")
     ax.axhline(div.tau_mm, color="#22a55b", lw=1.2, ls="--", label=f"tau = {div.tau_mm:.1f} mm")
     ax.axhline(2 * div.tau_mm, color="#e0a100", lw=1.0, ls=":", label="2 tau")
-    ax.plot(t, div.error_mm, color="#0a7ea4", lw=1.6, label=ghost_label)
+    ax.plot(t, div.error_mm, color="#0a7ea4", lw=1.6, label="distance ghost to real object")
     if div.onset_t is not None:
         ax.axvline(div.onset_t - t0, color="#d64545", lw=1.2, label="onset of drift")
     ax.set_xlabel("time since the start of the motion (s)")
-    ax.set_ylabel("distance from the real object (mm)")
-    ax.set_title("How far the ghost is from the real object")
+    ax.set_ylabel("error (mm)")
     ax.set_ylim(bottom=0)
     ax.legend(loc="upper left", fontsize=8)
     fig.tight_layout()
@@ -187,7 +208,8 @@ def build_brief(
         f"{3 * div.sigma_noise_mm:.2f} mm and half the object's radius = "
         f"{0.5 * div.radius_mm:.2f} mm). Largest error {div.max_error_mm:.1f} mm. {drift}",
         "",
-        "Image 1 is the error plot. Images 2 to 5 are frames at "
+        "Image 1 is the drift plot: the measured motion against the ghost's prediction above, the "
+        "error against time below. Images 2 to 5 are frames at "
         + ", ".join(f"{x:.2f} s" for x in frame_times)
         + " after the start of the motion: the cyan translucent object is the ghost, the white "
         "line the real object's trail, the dotted cyan line the predicted path, and the ghost's "
