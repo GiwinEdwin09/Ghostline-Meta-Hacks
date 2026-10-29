@@ -159,8 +159,19 @@ def test_there_is_a_stub_for_every_stage():
     }
 
 
-# The five measurement stages are wired to their modules (jobs/measure.py).
-WIRED = {"ingest", "analyze_scene", "track_objects", "calibrate", "extract_trajectory"}
+# Wired stages: measurement (jobs/measure.py), the physicist and reviewer, and the ghost.
+WIRED = {
+    "ingest",
+    "analyze_scene",
+    "track_objects",
+    "calibrate",
+    "extract_trajectory",
+    "run_physicist",
+    "run_review",
+    "predict_ghost",
+    "diagnose_revision",
+    "rerun_model",
+}
 
 
 @pytest.mark.parametrize("name", [n for n in STAGE_FUNCTIONS if n not in WIRED])
