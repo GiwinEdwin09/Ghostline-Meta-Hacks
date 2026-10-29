@@ -15,12 +15,12 @@ from collections.abc import Iterator
 
 from ghostline.jobs.context import JobContext
 from ghostline.jobs.errors import StageError
-from ghostline.jobs.stage_types import GhostResult, TrajectoryResult
+from ghostline.jobs.stage_types import GhostResult, RevisionResult, TrajectoryResult
 from ghostline.physics.harness.schema import ModelSpec
 from ghostline.physics.library import model_ids
 from ghostline.physics.runner import InProcessRunner, Runner
 from ghostline.store.core_schemas import SceneAnalysis
-from ghostline.store.records import Experiment, Ref, Trial
+from ghostline.store.records import Experiment, GhostRender, Ref, Trial
 
 from .divergence import measure_divergence
 from .forecast import forecast_trial, freeze
@@ -135,6 +135,8 @@ def render_version(
             slow_video_path=rel(slow_path) if slow_path else None,
             divergence_onset_s=track.onset_s,
             max_error_mm=div.max_error_mm,
+            threshold_mm=track.tau_mm,
+            predicted_ahead_s=track.predicted_ahead_s,
         ),
         track,
     )
@@ -221,3 +223,25 @@ def _note_prediction(ctx, prove_trial, spec, name, frozen, forecast, div) -> Non
             f"The fitted start {forecast.ic.at_bound} sits at the edge of its allowed range, so "
             "the launch may be outside what the model expects.",
         )
+
+
+def diagnose_revision(
+    ctx: JobContext,
+    experiment: Experiment,
+    ghost: GhostRender,
+    *,
+    runner: Runner | None = None,
+    ask=None,
+    review=None,
+    n_draws: int = N_DRAWS,
+) -> RevisionResult:
+    """Part 17: Wonder diagnoses the drift, a revised model is fitted on trial 1 only, and ghost
+    v2 is rendered when it forecasts trial 2 better beyond noise.
+
+    `ask` (a callable taking the diagnosis inputs and returning Wonder's reply) defaults to a
+    Wonder call through `ctx.meta`. `review` is an optional reviewer round on the revision, a
+    callable taking a `RevisionDossier`; it defaults to none.
+    """
+    from .revision_stage import diagnose
+
+    return diagnose(ctx, experiment, ghost, runner=runner, ask=ask, review=review, n_draws=n_draws)

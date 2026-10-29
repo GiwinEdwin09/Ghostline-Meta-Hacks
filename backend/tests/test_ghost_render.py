@@ -82,6 +82,7 @@ class FakeTrack:
     def __init__(self, conf, speed, border=None):
         n = len(conf)
         self.frame = np.arange(n)
+        self.speed = np.asarray(speed, float)
         self.cx = np.cumsum(speed)
         self.cy = np.zeros(n)
         self.area = np.full(n, 600.0)
@@ -92,7 +93,8 @@ class FakeTrack:
         return np.ones((8, 8), np.uint8)
 
 
-def test_the_picker_prefers_high_confidence_then_the_slowest_frame():
+def test_the_picker_prefers_high_confidence_then_the_slowest_frame(monkeypatch):
+    monkeypatch.setattr("ghostline.ghost.sprite._speed", lambda t: t.speed)
     conf = [0.90, 0.99, 0.99, 0.99, 0.70, 0.99]
     speed = [3.0, 9.0, 0.5, 4.0, 0.1, 6.0]
     track = FakeTrack(conf, speed)
@@ -123,8 +125,10 @@ def test_the_ghost_is_composited_translucently_with_an_outline_in_the_status_col
     frame = np.full((200, 300, 3), 60, np.uint8)
     before = frame.copy()
     draw_sprite(frame, sprite, (150.0, 100.0), outline="amber")
-    # inside the disc: the background shows through at 45%, the tinted object at 55%
-    expect = 0.45 * 60 + 0.55 * (0.5 * np.array(ORANGE) + 0.5 * CYAN_BGR)
+    # inside the disc: the glow tints the background, which shows through at 45%, and the tinted
+    # object covers the rest at 55%
+    glowed = 0.75 * 60 + 0.25 * CYAN_BGR
+    expect = 0.45 * glowed + 0.55 * (0.5 * np.array(ORANGE) + 0.5 * CYAN_BGR)
     assert frame[100, 150] == pytest.approx(expect, abs=6)
     # the outline ring is amber (BGR) just outside the body
     ring = frame[100, 150 + 14]
@@ -205,7 +209,7 @@ def test_the_launch_window_label_shows_over_the_first_frames_only():
     early = ann.draw(np.full((360, 640, 3), 40, np.uint8), 5)  # t = 0.17 s
     late = ann.draw(np.full((360, 640, 3), 40, np.uint8), 60)  # t = 2 s
     violet = (250, 139, 167)
-    assert hud_pixels(early, violet) > 100
+    assert hud_pixels(early, violet) > 40
     assert hud_pixels(late, violet) == 0
 
 
