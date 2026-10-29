@@ -62,12 +62,12 @@ def test_the_openapi_document_carries_the_appendix_c_shapes(settings):
     components = schema(settings)["components"]["schemas"]
 
     for name in (
-        "SceneAnalysis",
-        "TrackedObject",
+        "SceneView",
+        "TrackedObjectView",
         "ParamSpec",
         "ModelProposal",
-        "Quantity",
-        "Conclusion",
+        "QuantityView",
+        "ConclusionView",
         "ReviewIssue",
         "Review",
         "ExportedParam",

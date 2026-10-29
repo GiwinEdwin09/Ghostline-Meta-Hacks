@@ -102,6 +102,8 @@ def _save_ghost(ctx: JobContext, trial: Trial, result: GhostResult) -> GhostRend
             slow_video_path=result.slow_video_path,
             divergence_onset_s=result.divergence_onset_s,
             max_error_mm=result.max_error_mm,
+            threshold_mm=result.threshold_mm,
+            predicted_ahead_s=result.predicted_ahead_s,
         )
     )
     ctx.commit()
@@ -221,9 +223,15 @@ def revise(ctx: JobContext) -> None:
     if result.revised_model is not None:
         ctx.repo.upsert_model(result.revised_model)
         refs.append(Ref(kind="model", id=result.revised_model.id))
+    revision = {"diagnosis": result.diagnosis_md, "adopted": result.adopted, "note": ""}
     if result.adopted and result.ghost is not None:
         new_ghost = _save_ghost(ctx, _trial_of(ctx, ghost), result.ghost)
+        revision["note"] = f"Ghost v{new_ghost.version} forecasts better than v{ghost.version}."
+        ctx.repo.set_ghost_revision(new_ghost.id, revision)
         refs.append(Ref(kind="ghost", id=str(new_ghost.id)))
+    else:
+        revision["note"] = "The revision didn't forecast better beyond the noise, so v1 stays."
+        ctx.repo.set_ghost_revision(ghost.id, revision)
     ctx.notebook.append(
         actor="wonder",
         kind="revision",

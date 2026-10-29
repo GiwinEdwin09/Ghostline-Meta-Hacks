@@ -54,8 +54,16 @@ _EXPERIMENT_UPDATABLE = {
     "visibility",
     "error",
     "replay_check",
+    "whatif",
 }
-_EXPERIMENT_JSON = {"declared_capture", "setup", "scene", "conclusion", "replay_check"}
+_EXPERIMENT_JSON = {
+    "declared_capture",
+    "setup",
+    "scene",
+    "conclusion",
+    "replay_check",
+    "whatif",
+}
 _TRIAL_UPDATABLE = {
     "status",
     "original_filename",
@@ -468,9 +476,11 @@ class Repo:
             )
             row = tx.db.fetch_one(
                 "insert into ghost_renders (id, experiment_id, trial_id, model_id, version,"
-                " video_path, track_path, slow_video_path, divergence_onset_s, max_error_mm)"
+                " video_path, track_path, slow_video_path, divergence_onset_s, max_error_mm,"
+                " threshold_mm, predicted_ahead_s, revision)"
                 " values (%s, %s, %s, %s, coalesce(%s, (select coalesce(max(version), 0) + 1"
-                " from ghost_renders where experiment_id = %s)), %s, %s, %s, %s, %s) returning *",
+                " from ghost_renders where experiment_id = %s)), %s, %s, %s, %s, %s, %s, %s, %s)"
+                " returning *",
                 (
                     ghost.id,
                     ghost.experiment_id,
@@ -483,9 +493,17 @@ class Repo:
                     ghost.slow_video_path,
                     ghost.divergence_onset_s,
                     ghost.max_error_mm,
+                    ghost.threshold_mm,
+                    ghost.predicted_ahead_s,
+                    J(ghost.revision) if ghost.revision is not None else None,
                 ),
             )
         return GhostRender.model_validate(row)
+
+    def set_ghost_revision(self, ghost_id: UUID, revision: dict[str, Any]) -> None:
+        self.db.execute(
+            "update ghost_renders set revision = %s where id = %s", (J(revision), ghost_id)
+        )
 
     def next_ghost_version(self, experiment_id: UUID) -> int:
         row = self.db.fetch_one(
@@ -550,6 +568,15 @@ class Repo:
         )
         return [Event.model_validate(r) for r in rows]
 
+    def find_event(self, experiment_id: UUID, title_prefix: str) -> Event | None:
+        """The newest event whose title starts with `title_prefix` (for example "Confidence")."""
+        row = self.db.fetch_one(
+            "select * from events where experiment_id = %s and starts_with(title, %s)"
+            " order by seq desc limit 1",
+            (experiment_id, title_prefix),
+        )
+        return Event.model_validate(row) if row else None
+
     def last_event_seq(self, experiment_id: UUID) -> int:
         row = self.db.fetch_one("select event_seq from experiments where id = %s", (experiment_id,))
         return int(row["event_seq"]) if row else 0
@@ -559,10 +586,15 @@ class Repo:
         with self.transaction() as tx:
             row = tx.db.fetch_one(
                 "insert into benchmark (experiment_id, system, quantity, truth_value, truth_sigma,"
-                " truth_method, notes) values (%s, %s, %s, %s, %s, %s, %s)"
+                " truth_method, notes, clip_id, object, unit, expected_model, is_failure_case,"
+                " failure_expected) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
                 " on conflict (experiment_id, quantity) do update set system = excluded.system,"
                 " truth_value = excluded.truth_value, truth_sigma = excluded.truth_sigma,"
-                " truth_method = excluded.truth_method, notes = excluded.notes returning *",
+                " truth_method = excluded.truth_method, notes = excluded.notes,"
+                " clip_id = excluded.clip_id, object = excluded.object, unit = excluded.unit,"
+                " expected_model = excluded.expected_model,"
+                " is_failure_case = excluded.is_failure_case,"
+                " failure_expected = excluded.failure_expected returning *",
                 (
                     experiment_id,
                     entry.system,
@@ -571,6 +603,12 @@ class Repo:
                     entry.truth_sigma,
                     entry.truth_method,
                     entry.notes,
+                    entry.clip_id,
+                    entry.object,
+                    entry.unit,
+                    entry.expected_model,
+                    entry.is_failure_case,
+                    entry.failure_expected,
                 ),
             )
             tx.db.execute(
@@ -581,9 +619,25 @@ class Repo:
     def list_benchmark(self) -> list[dict[str, Any]]:
         """Benchmark rows joined with the experiment's title, status and result."""
         return self.db.fetch_all(
-            "select b.*, e.title, e.status, e.confidence, e.conclusion, e.visibility"
+            "select b.*, e.title, e.status, e.confidence, e.conclusion, e.visibility,"
+            " e.winner_model_id"
             " from benchmark b join experiments e on e.id = b.experiment_id"
             " order by b.system, e.created_at, b.quantity"
+        )
+
+    # --- explanations (the What-if Explain button) -------------------------------------------
+    def get_explanation(self, experiment_id: UUID, request_hash: str) -> str | None:
+        row = self.db.fetch_one(
+            "select text from explanations where experiment_id = %s and request_hash = %s",
+            (experiment_id, request_hash),
+        )
+        return row["text"] if row else None
+
+    def put_explanation(self, experiment_id: UUID, request_hash: str, text: str) -> None:
+        self.db.execute(
+            "insert into explanations (experiment_id, request_hash, text) values (%s, %s, %s)"
+            " on conflict (experiment_id, request_hash) do update set text = excluded.text",
+            (experiment_id, request_hash, text),
         )
 
     # --- model calls and spend --------------------------------------------------------------
@@ -797,6 +851,12 @@ class Repo:
             (client_ip_hash, hours * 3600),
         )
         return int(row["n"]) if row else 0
+
+    def experiment_titles(self, ids: set[UUID]) -> dict[UUID, str]:
+        rows = self.db.fetch_all(
+            "select id, title from experiments where id = any(%s)", (list(ids),)
+        )
+        return {r["id"]: r["title"] for r in rows}
 
     # --- admin ------------------------------------------------------------------------------
     def experiment_costs(self, *, limit: int = 20) -> list[dict[str, Any]]:

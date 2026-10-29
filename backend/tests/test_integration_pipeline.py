@@ -16,6 +16,7 @@ record them again (about $0.2), with the key in the environment:
 import dataclasses
 import os
 from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -107,7 +108,7 @@ def upload(client, experiment_id, video: Path, role="fit"):
     return done.json()
 
 
-def test_a_clip_goes_from_upload_to_trajectory(pipeline, paths, monkeypatch):
+def test_a_clip_goes_from_upload_to_trajectory(pipeline, paths, repo, monkeypatch):
     from conftest import FakeStages
 
     truth = clip(**CLIP)
@@ -133,16 +134,25 @@ def test_a_clip_goes_from_upload_to_trajectory(pipeline, paths, monkeypatch):
     assert first["job"]["kind"] == "ingest_trial" and first["job"]["status"] == "succeeded", first
     state = client.get(f"/api/experiments/{eid}").json()
     assert state["status"] == "ready"
-    [trial] = state["trials"]
-    assert trial["status"] == "ready" and trial["n_frames"] == truth.n_frames
-    assert trial["duration_s"] == pytest.approx(truth.n_frames / 120, abs=0.02)
+    [view] = state["trials"]
+    assert view["status"] == "ready" and view["n_frames"] == truth.n_frames
+    assert (view["width"], view["height"]) == (854, 480)
+    assert view["duration_s"] == pytest.approx(truth.n_frames / 120, abs=0.02)
+    assert view["timing"]["classification"] == "cfr"
+    assert view["timing"]["detected_fps"] == pytest.approx(120, rel=0.01)
+    assert view["trim"]["end_s"] > view["trim"]["start_s"]
+    media_urls = view["media"]
+    assert media_urls["playback_url"].startswith(f"{eid}/trials/")
+    assert client.get(f"/api/media/{media_urls['poster_url']}").status_code == 200
+    # the raw upload is stored under a name of ours and never served
+    trial = repo.get_trial(view["id"])
+    assert not any(c in trial.paths["original"] for c in ("..", "MOV"))
+    assert client.get(f"/api/media/{eid}/{trial.paths['original']}").status_code == 404
     assert {"original", "master", "wonder_480", "playback_720", "poster", "timestamps"} <= set(
-        trial["paths"]
+        trial.paths
     )
-    assert "wonder_480" in trial["meta_file_ids"]
-    assert trial["trim"]["source"] == "auto" and trial["trim"]["end_s"] > trial["trim"]["start_s"]
-    assert not any(c in trial["paths"]["original"] for c in ("..", "MOV"))  # the name is ours
-    timestamps = np.load(paths.experiment_dir(eid) / trial["paths"]["timestamps"])
+    assert "wonder_480" in trial.meta_file_ids
+    timestamps = np.load(paths.experiment_dir(eid) / trial.paths["timestamps"])
     assert len(timestamps) == truth.n_frames and timestamps[0] == pytest.approx(0, abs=1e-6)
 
     # --- analyze -------------------------------------------------------------------------
@@ -155,28 +165,31 @@ def test_a_clip_goes_from_upload_to_trajectory(pipeline, paths, monkeypatch):
     assert state["scene"]["proceed"] is True
 
     # tracking left a track per object and the sheet, and the raw SAM stream for the browser
-    [moving] = [t for t in state["tracks"] if t["stats"].get("role") == "moving_body"]
-    in_window = (trial["trim"]["end_s"] - trial["trim"]["start_s"]) * 120
-    assert moving["stats"]["frames"] >= 0.85 * in_window
-    sheet = next(t for t in state["tracks"] if t["object_key"] == "sheet")
-    assert sheet["stats"]["area_px"] > 10_000
+    tracks = {t.object_key: t for t in repo.list_tracks([trial.id])}
+    [moving] = [t for t in tracks.values() if t.stats.get("role") == "moving_body"]
+    in_window = (view["trim"]["end_s"] - view["trim"]["start_s"]) * 120
+    assert moving.stats["frames"] >= 0.85 * in_window
+    assert tracks["sheet"].stats["area_px"] > 10_000
     exp_dir = paths.experiment_dir(eid)
-    assert (exp_dir / moving["stats"]["events_path"]).is_file()
-    tracks = pd.read_parquet(exp_dir / moving["parquet_path"])
-    assert {"object_key", "frame", "t", "cx", "cy", "area", "conf", "flags"} <= set(tracks.columns)
+    assert (exp_dir / moving.stats["events_path"]).is_file()
+    table = pd.read_parquet(exp_dir / moving.parquet_path)
+    assert {"object_key", "frame", "t", "cx", "cy", "area", "conf", "flags"} <= set(table.columns)
 
-    # calibration: millimetres per pixel in the plane of motion, within 1% of the truth
-    [trial] = state["trials"]
-    cal = trial["calibration"]
-    assert cal["corner_method"] and cal["uncertainty"]["sigma_scale_rel"] < 0.02
-    assert cal["paper"] == "A4" and cal["camera_motion"]["status"] == "ok"
-    assert {"calibration", "calib_overlay", "rectified"} <= set(trial["paths"])
-    assert (exp_dir / trial["paths"]["calib_overlay"]).is_file()
+    # calibration, as the page sees it
+    [view] = state["trials"]
+    cal = view["calibration"]
+    assert cal["paper"] == "a4" and cal["sigma_scale_rel"] < 0.02
+    assert cal["camera_motion_px"] < 1 and cal["gravity_source"] in ("camera_level", "data")
+    assert len(cal["world_to_px"]) == 9
+    assert client.get(f"/api/media/{view['media']['calib_overlay_url']}").status_code == 200
+    assert view["media"]["sam_events_url"].endswith(".events.jsonl")
+    events = client.get(f"/api/media/{view['media']['sam_events_url']}")
+    assert events.status_code == 200 and events.text.count("\n") > 10
 
     # trajectory: metres, with the fall visible, and a parquet other stages can read
-    [traj] = state["trajectories"]
-    assert traj["summary"]["n_points"] > 0.7 * in_window
-    frame = pd.read_parquet(exp_dir / traj["parquet_path"])
+    [traj] = repo.list_trajectories([trial.id])
+    assert traj.summary["n_points"] > 0.7 * in_window
+    frame = pd.read_parquet(exp_dir / traj.parquet_path)
     assert list(frame.columns[:3]) == ["t", "x", "y"]
     assert frame["y"].max() - frame["y"].min() > 0.3  # the ball falls more than 30 cm
     # positions agree with the truth the clip was rendered from, to a centimetre
@@ -184,8 +197,20 @@ def test_a_clip_goes_from_upload_to_trajectory(pipeline, paths, monkeypatch):
     error = np.hypot(*(frame[["x", "y"]].to_numpy() - true_xy).T)
     assert np.sqrt(np.mean(error**2)) < 0.015, np.sqrt(np.mean(error**2))
 
+    # ... and the same trajectory as JSON through the route the web's trajectory_url names
+    assert view["status"] == "tracked"
+    url = "/" + view["media"]["trajectory_url"]
+    shown = client.get(url).json()
+    assert shown["main"] == "y" and shown["main_unit"] == "m"
+    assert len(shown["t"]) == len(shown["y"]) == len(shown["px"]) == len(frame)
+    assert shown["px"][len(frame) // 2] is not None and shown["noise_sigma"] > 0
+    assert shown["split_t"] < shown["t"][-1] and [e["kind"] for e in shown["events"]][:1] == [
+        "release"
+    ]
+    assert client.get(f"/api/experiments/{eid}/trials/{uuid4()}/trajectory").status_code == 404
+
     # the faked downstream stages ran after the real ones, and the notebook tells the story
-    assert state["winner_model_id"] == "P1" and state["review_status"] == "accepted"
+    assert state["winner_name"] == "Nonlinear pendulum" and state["review"]["status"] == "accepted"
     page = client.get(f"/api/experiments/{eid}/events").json()
     titles = [e["title"] for e in page["events"]]
     assert titles[:1] == ["Prepared the clip"]
@@ -199,4 +224,6 @@ def test_a_clip_goes_from_upload_to_trajectory(pipeline, paths, monkeypatch):
     assert page["status"] == "complete"
     hypo = next(e for e in page["events"] if e["kind"] == "hypothesis")
     assert 2 <= len(hypo["data"]["hypotheses"]) <= 4
+    overlay = next(e for e in page["events"] if e["title"].startswith("Calibrated"))
+    assert client.get(f"/api/media/{overlay['attachments'][0]['url']}").status_code == 200
     assert fake.calls == ["run_physicist", "run_review"]

@@ -661,9 +661,10 @@ def extract_trajectory(
             retryable=False,
         ) from exc
     ctx.progress(0.8)
-    result.write(trial_dir)
 
     summary = result.summary
+    summary["object_key"] = key  # which track the trail on the video follows
+    result.write(trial_dir)
     noise = summary["noise"]
     ctx.notebook.append(
         actor="harness",
