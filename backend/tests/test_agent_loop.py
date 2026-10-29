@@ -110,7 +110,7 @@ def happy_policy(items, n):
 def run_loop(repo, paths, settings, tmp_path):
     def go(policy, **overrides):
         world = make_world(repo, paths, dataclasses.replace(settings, **overrides))
-        meta, reviewer, sdk = scripted_clients(policy, tmp_path)
+        meta, reviewer, sdk, _ = scripted_clients(policy, tmp_path)
         with use_clients(meta, reviewer):
             conclusion = run_physicist(
                 world.ctx,

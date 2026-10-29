@@ -253,20 +253,31 @@ def message_output(text: str) -> dict[str, Any]:
     return message_item(text)
 
 
-def scripted_clients(policy, tmp_path):
-    """(meta, reviewer, sdk) in live mode on a scripted Wonder; no network, no keys."""
+def scripted_clients(policy, tmp_path, chats=None, reviewer_configured=True):
+    """(meta, reviewer, sdk) in live mode on a scripted Wonder and a scripted referee (`chats`:
+    Chat Completions reply dicts or exceptions); no network, no keys."""
+    import dataclasses
+
+    from fixtures.fakes import FakeSDK
+
     from ghostline.config import get_settings
     from ghostline.llm import InMemorySpendStore, MetaClient, ReviewerClient, Runtime
 
+    settings = get_settings()
+    if reviewer_configured:
+        settings = dataclasses.replace(
+            settings, reviewer_base_url="https://reviewer.test", reviewer_model="spark-test"
+        )
     runtime = Runtime.create(
-        get_settings(),
+        settings,
         mode="live",
         cache_dir=tmp_path / "llm-cache",
         store=InMemorySpendStore(),
         sleep=lambda s: None,
     )
     sdk = PolicySDK(policy)
-    return MetaClient(runtime, sdk=sdk), ReviewerClient(runtime, sdk=None), sdk
+    referee = FakeSDK(chats=chats or [])
+    return MetaClient(runtime, sdk=sdk), ReviewerClient(runtime, sdk=referee), sdk, referee
 
 
 def tool_texts(items: list[dict[str, Any]]) -> list[str]:
