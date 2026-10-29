@@ -18,7 +18,7 @@ from .angles import (
     pendulum_theta,
     spinner_phi,
 )
-from .clean import clean_track
+from .clean import MIN_CONF, clean_track, object_confidence_low, typical_confidence
 from .events import (
     detect_impacts,
     detect_release_stop,
@@ -50,7 +50,7 @@ class TrajectoryError(RuntimeError):
 
 def _static_point(track: TrackSeries) -> np.ndarray:
     """Median pixel position of a static tracked object (pivot or hub)."""
-    ok = (track.conf >= 0.5) & ~track.border
+    ok = (track.conf >= MIN_CONF) & ~track.border
     if ok.sum() == 0:
         ok = np.ones(len(track), bool)
     return np.array([np.median(track.cx[ok]), np.median(track.cy[ok])])
@@ -118,6 +118,14 @@ def build_trajectory(
     dumped Part 5 TimingModel, used only for the uncertainty summary.
     """
     notices: list[Notice] = []
+    if object_confidence_low(tracks):
+        notices.append(
+            Notice(
+                code="object_confidence_low",
+                message="Ghostline is not very sure it tracked the right object (SAM's score for "
+                f"it is {typical_confidence(tracks):.2f}). Check the mask overlay.",
+            )
+        )
     frames = clean_track(tracks)
     kept = np.nonzero(frames["drop"].to_numpy() == "")[0]
     if len(kept) < MIN_SAMPLES:
@@ -362,6 +370,10 @@ def build_trajectory(
     return TrajectoryResult(df, frames, summary, notices)
 
 
+def _finite_or_none(value: float) -> float | None:
+    return float(value) if np.isfinite(value) else None
+
+
 def _summary(
     system, tracks, frames, df, angle_name, ev, impacts, in_window, sigma_pos, sig_xy,
     sigma_angle, gravity_info, oop, retime, extras, calib, timing, notices,
@@ -386,6 +398,7 @@ def _summary(
         "angle_column": angle_name,
         "n_points": int(len(df)),
         "n_frames_in": int(len(tracks)),
+        "tracking_confidence": _finite_or_none(typical_confidence(tracks)),
         "n_dropped": {k: int(v) for k, v in drops.items()},
         "duration_s": t1 - t0,
         "t_range": [float(df["t"].iloc[0]), float(df["t"].iloc[-1])],

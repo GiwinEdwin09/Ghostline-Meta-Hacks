@@ -22,6 +22,7 @@ from .tracker import (
     TrackResult,
     box_prompt,
     segment_sheet,
+    track_from_events,
     track_object,
 )
 from .tracks import (
@@ -62,6 +63,7 @@ __all__ = [
     "segment_sheet",
     "select_primary",
     "stitch_tracks",
+    "track_from_events",
     "track_object",
     "tracks_from_result",
     "video_size",

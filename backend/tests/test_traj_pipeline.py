@@ -239,9 +239,21 @@ def test_out_of_plane_motion_is_flagged_but_perspective_alone_is_not():
 
 def test_too_few_usable_frames_is_an_error():
     _, cal, track, _, _ = analytic_tracks("free_fall", 0.5, fps=60.0)
-    track.conf[:] = 0.2
+    track.border[:] = True
     with pytest.raises(TrajectoryError):
         build_trajectory(track, cal, "free_fall")
+
+
+def test_a_low_object_confidence_is_a_warning_not_a_reason_to_drop_every_frame():
+    # SAM's confidence is one number per object: 0.2 on every frame means a doubtful object, and
+    # throwing all its frames away would make the whole clip unusable.
+    _, cal, track, _, _ = analytic_tracks("free_fall", 1.0, fps=60.0)
+    track.conf[:] = 0.2
+    res = build_trajectory(track, cal, "free_fall")
+    assert res.summary["n_dropped"] == {}
+    assert res.summary["n_points"] == len(track)
+    assert "object_confidence_low" in {n.code for n in res.notices}
+    assert res.summary["tracking_confidence"] == pytest.approx(0.2)
 
 
 def test_outputs_have_the_columns_and_summary_the_physics_code_expects(drop, tmp_path):

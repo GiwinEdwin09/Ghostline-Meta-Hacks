@@ -6,6 +6,7 @@ bound to a single connection, for callers that need several writes to commit tog
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import date
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
@@ -304,6 +305,13 @@ class Repo:
 
     def merge_trial_paths(self, trial_id: UUID, paths: dict[str, str]) -> None:
         self.db.execute("update trials set paths = paths || %s where id = %s", (J(paths), trial_id))
+
+    def merge_trial_meta_file_ids(self, trial_id: UUID, ids: dict[str, str]) -> None:
+        """Add Files API uploads without disturbing the ones other stages have recorded."""
+        self.db.execute(
+            "update trials set meta_file_ids = meta_file_ids || %s where id = %s",
+            (J(ids), trial_id),
+        )
 
     # --- tracks, trajectories ---------------------------------------------------------------
     def upsert_track(self, track: TrackRecord) -> None:
@@ -636,6 +644,12 @@ class Repo:
         row = self.db.fetch_one(
             "select coalesce(sum(amount_usd), 0) as total from spend_ledger"
             " where day = (now() at time zone 'utc')::date"
+        )
+        return float(row["total"]) if row else 0.0
+
+    def spend_on_day(self, day: date) -> float:
+        row = self.db.fetch_one(
+            "select coalesce(sum(amount_usd), 0) as total from spend_ledger where day = %s", (day,)
         )
         return float(row["total"]) if row else 0.0
 

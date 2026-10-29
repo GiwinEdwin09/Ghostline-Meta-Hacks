@@ -133,6 +133,17 @@ class Track:
     def renamed(self, key: str) -> Track:
         return Track(**{**self.__dict__, "key": key})
 
+    def shifted(self, offset: int) -> Track:
+        """The same track with frame indices moved by `offset`. SAM numbers the frames of the
+        clip it was sent from 0, so a trimmed clip's frame n is master frame `start + n`."""
+        return Track(
+            **{
+                **self.__dict__,
+                "frame": self.frame + offset,
+                "masks": {frame + offset: record for frame, record in self.masks.items()},
+            }
+        )
+
 
 def _build(
     key: str, rows: list[tuple[int, str, SegmentationMaskRecord]], frame_size: tuple[int, int]

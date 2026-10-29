@@ -216,14 +216,16 @@ def unwired_client(make_client, repo, paths, settings):
     return make_client(InlineSpawner(run))
 
 
-def test_jobs_report_that_the_stages_are_not_wired_yet(unwired_client):
+def test_an_upload_that_is_not_a_video_fails_ingest_for_good(unwired_client, paths):
     eid = unwired_client.post("/api/experiments", json={"title": "x"}).json()["id"]
 
     upload = upload_clip(unwired_client, eid)
 
     assert upload["job"]["status"] == "failed"
-    assert upload["job"]["error_code"] == "not_implemented"
-    assert "wired in wave 2" in upload["job"]["error"]
+    assert upload["job"]["error_code"] == "not_a_video" and upload["job"]["retryable"] is False
+    assert "video" in upload["job"]["error"]
+    # nothing a stranger sent is kept
+    assert not list(paths.experiment_dir(eid).glob("trials/*/original.*"))
 
 
 def test_export_and_simulate_say_501_until_they_are_wired(unwired_client, repo):
