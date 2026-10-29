@@ -159,7 +159,11 @@ def test_there_is_a_stub_for_every_stage():
     }
 
 
-@pytest.mark.parametrize("name", STAGE_FUNCTIONS)
+# The five measurement stages are wired to their modules (jobs/measure.py).
+WIRED = {"ingest", "analyze_scene", "track_objects", "calibrate", "extract_trajectory"}
+
+
+@pytest.mark.parametrize("name", [n for n in STAGE_FUNCTIONS if n not in WIRED])
 def test_stubs_raise_not_implemented_with_the_wave_2_message(name):
     fn = getattr(stages, name)
     args = [MagicMock() for _ in inspect.signature(fn).parameters]

@@ -1,9 +1,11 @@
-"""WAVE 2 WIRING POINT: every pipeline stage the jobs call lives here as a stub.
+"""Every pipeline stage the jobs call lives here.
 
 The job handlers (jobs/handlers.py) and two API routes (export and simulate) call only these
-functions. Each stub raises NotImplementedError until the owning module exists; wave 2 replaces
-the body with a call into it and keeps the signature, or changes the signature and the one place
-in handlers.py that calls it. Tests replace these with fakes (monkeypatch.setattr).
+functions. The five measurement stages (ingest, analyze_scene, track_objects, calibrate and
+extract_trajectory) are wired to their modules in jobs/measure.py. The rest are stubs that raise
+NotImplementedError until the owning module is merged and wired: replace the body with a call
+into it and keep the signature, or change the signature and the one place in handlers.py that
+calls it. Tests replace stages with fakes (monkeypatch.setattr).
 
 Rules for implementations:
 - Report with ctx.phase(...) and ctx.progress(...). Write notebook events with ctx.notebook.
@@ -17,6 +19,7 @@ Rules for implementations:
 
 from typing import Literal
 
+from ghostline.jobs import measure
 from ghostline.jobs.context import JobContext
 from ghostline.jobs.stage_types import (
     CalibrationResult,
@@ -40,19 +43,20 @@ _WIRED_LATER = "wired in wave 2"
 def ingest(ctx: JobContext, trial: Trial) -> IngestResult:
     """Part 5 (ingest/): probe, timing model, master.mp4 and derived files, auto-trim, Meta Files
     upload. The original is already assembled at paths.original(...); trial.original_filename,
-    trial.sha256 and the experiment's declared capture are the inputs."""
-    raise NotImplementedError(_WIRED_LATER)
+    trial.sha256 and the experiment's declared capture are the inputs. Part 28's upload checks
+    (ffprobe, video streams only, frame limit) run first."""
+    return measure.ingest(ctx, trial)
 
 
 # --- analyze_experiment -------------------------------------------------------------------
 def analyze_scene(ctx: JobContext, experiment: Experiment, trial: Trial) -> SceneAnalysis:
     """Part 6 (scene/): Wonder watches wonder_480.mp4 and returns the SceneAnalysis."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.analyze_scene(ctx, experiment, trial)
 
 
 def track_objects(ctx: JobContext, trial: Trial, scene: SceneAnalysis) -> TrackingResult:
     """Part 7 (vision/): SAM 3.1 tracks every object in scene.tracked_objects plus the sheet."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.track_objects(ctx, trial, scene)
 
 
 def calibrate(
@@ -63,7 +67,7 @@ def calibrate(
     tracking: TrackingResult,
 ) -> CalibrationResult:
     """Part 8 (calib/): sheet corners, homography, plane-offset correction, gravity direction."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.calibrate(ctx, experiment, trial, scene, tracking)
 
 
 def extract_trajectory(
@@ -75,7 +79,7 @@ def extract_trajectory(
     calibration: CalibrationResult,
 ) -> TrajectoryResult:
     """Part 9 (traj/): clean physical time series, noise estimate, events, quality flags."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.extract_trajectory(ctx, experiment, trial, scene, tracking, calibration)
 
 
 def run_physicist(

@@ -5,14 +5,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from ghostline.api.benchmark import BenchmarkTableView, benchmark_table
 from ghostline.api.deps import RepoDep, ServicesDep, require_passcode, start_job
 from ghostline.api.errors import ERROR_RESPONSES, ApiError
 from ghostline.api.schemas import (
+    AdminBudget,
+    AdminCache,
     AdminExperiment,
+    AdminJob,
     AdminOverview,
     AuthCheck,
-    BenchmarkRow,
-    BenchmarkTable,
 )
 from ghostline.jobs import lifecycle
 from ghostline.store.records import BenchmarkEntry, BenchmarkRecord, Job
@@ -58,21 +60,9 @@ def retry_job(job_id: UUID, services: ServicesDep, repo: RepoDep) -> Job:
     return start_job(services, repo, job.experiment_id, job.kind, job.params, retry_of=job.id)
 
 
-@router.get("/benchmark", response_model=BenchmarkTable)
-def get_benchmark(repo: RepoDep) -> BenchmarkTable:
-    rows = []
-    for row in repo.list_benchmark():
-        conclusion = row.get("conclusion") or {}
-        measured = next(
-            (
-                q
-                for q in conclusion.get("quantities", [])
-                if str(q.get("name", "")).lower() == row["quantity"].lower()
-            ),
-            None,
-        )
-        rows.append(BenchmarkRow(**{**row, "measured": measured}))
-    return BenchmarkTable(rows=rows)
+@router.get("/benchmark", response_model=BenchmarkTableView)
+def get_benchmark(repo: RepoDep) -> BenchmarkTableView:
+    return benchmark_table(repo.list_benchmark())
 
 
 @router.put(
@@ -93,12 +83,24 @@ def put_benchmark(experiment_id: UUID, body: BenchmarkEntry, repo: RepoDep) -> B
 def admin_overview(services: ServicesDep, repo: RepoDep) -> AdminOverview:
     lifecycle.reap_stale_jobs(repo, services.settings)
     stats = repo.llm_stats_today()
+    calls = stats.get("calls", 0)
+    jobs = repo.list_jobs(limit=50)
+    titles = repo.experiment_titles({j.experiment_id for j in jobs})
     return AdminOverview(
-        spent_today_usd=repo.spend_today(),
-        budget_daily_usd=services.settings.budget_usd_daily,
-        budget_per_experiment_usd=services.settings.budget_usd_per_experiment,
-        llm_calls_today=stats.get("calls", 0),
-        llm_cache_hits_today=stats.get("cache_hits", 0),
-        recent_jobs=repo.list_jobs(limit=50),
-        experiments_by_cost=[AdminExperiment(**r) for r in repo.experiment_costs()],
+        budget=AdminBudget(
+            daily_usd=services.settings.budget_usd_daily,
+            spent_today_usd=repo.spend_today(),
+            per_experiment_usd=services.settings.budget_usd_per_experiment,
+        ),
+        cache=AdminCache(
+            hit_rate=stats.get("cache_hits", 0) / calls if calls else 0.0, calls_24h=calls
+        ),
+        jobs=[
+            AdminJob(**j.model_dump(), experiment_title=titles.get(j.experiment_id, ""))
+            for j in jobs
+        ],
+        experiments=[
+            AdminExperiment(**r, llm_mode=services.settings.llm_mode)
+            for r in repo.experiment_costs()
+        ],
     )

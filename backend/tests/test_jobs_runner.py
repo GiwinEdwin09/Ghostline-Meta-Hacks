@@ -215,10 +215,16 @@ def test_a_scene_that_cannot_be_measured_fails_without_retry(repo, paths, run, f
     assert "track_objects" not in fake_stages.calls
 
 
-def test_unwired_stages_fail_the_job_with_the_wave_2_message(repo, paths, run):
+def test_unwired_stages_fail_the_job_with_the_wave_2_message(repo, paths, run, monkeypatch):
+    from conftest import FakeStages
+
+    # The measurement stages are wired to real modules now; fake them to reach the first stub.
+    fake = FakeStages()
+    for name in ("analyze_scene", "track_objects", "calibrate", "extract_trajectory"):
+        monkeypatch.setattr(stages, name, getattr(fake, name))
     exp, _, job = start_analysis(repo, paths)
 
-    done = run(job)  # no fake stages: the real stubs
+    done = run(job)  # run_physicist is still the stub
 
     assert (done.status, done.error_code) == ("failed", "not_implemented")
     assert "wired in wave 2" in done.error

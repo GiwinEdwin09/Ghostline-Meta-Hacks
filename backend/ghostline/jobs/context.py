@@ -7,7 +7,9 @@ from dataclasses import dataclass, field
 from typing import get_args
 
 from ghostline.config import Settings
-from ghostline.jobs.errors import JobAbandoned
+from ghostline.jobs.clients import make_runtime
+from ghostline.jobs.errors import JobAbandoned, StageError
+from ghostline.llm import MetaClient, ReviewerClient, Runtime
 from ghostline.notebook import NotebookWriter
 from ghostline.store.records import Job, JobKind, Phase
 from ghostline.store.repo import Repo
@@ -74,11 +76,41 @@ class JobContext:
     _span: tuple[float, float] = (0.0, 0.0)
     _last_progress_write: float = float("-inf")
     notebook: NotebookWriter = field(init=False)
+    _runtime: Runtime | None = field(default=None, init=False, repr=False)
+    _meta: MetaClient | None = field(default=None, init=False, repr=False)
+    _reviewer: ReviewerClient | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.notebook = NotebookWriter(
             self.repo, self.job.experiment_id, current_phase=lambda: self.current_phase
         )
+
+    @property
+    def runtime(self) -> Runtime:
+        """The job's model runtime: mode and caps from settings, spend recorded in Postgres."""
+        if self._runtime is None:
+            self._runtime = make_runtime(self.settings, self.repo, self.paths)
+        return self._runtime
+
+    @property
+    def meta(self) -> MetaClient:
+        """Muse Wonder, SAM 3.1 and the Files API."""
+        if self._meta is None:
+            if self.runtime.mode != "replay" and not self.settings.model_api_key:
+                raise StageError(
+                    "The Meta Model API key isn't configured on the server.",
+                    code="not_configured",
+                    retryable=False,
+                )
+            self._meta = MetaClient(self.runtime)
+        return self._meta
+
+    @property
+    def reviewer(self) -> ReviewerClient:
+        """Muse Spark Open on the Modal Shared Endpoint."""
+        if self._reviewer is None:
+            self._reviewer = ReviewerClient(self.runtime)
+        return self._reviewer
 
     @property
     def experiment_id(self):

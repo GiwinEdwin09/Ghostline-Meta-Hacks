@@ -99,6 +99,7 @@ class Experiment(Record):
     cost_usd: float | None = None  # only filled in for requests that carry the passcode
     error: str | None = None
     replay_check: dict[str, Any] | None = None
+    whatif: dict[str, Any] | None = None  # the web's WhatIfContext, set after an analysis
 
 
 class Trim(BaseModel):
@@ -208,6 +209,9 @@ class GhostRender(Record):
     slow_video_path: str | None = None
     divergence_onset_s: float | None = None
     max_error_mm: float | None = None
+    threshold_mm: float | None = None  # tau: the error below which the ghost counts as tracking
+    predicted_ahead_s: float | None = None  # how far past the launch window it predicted
+    revision: dict[str, Any] | None = None  # {diagnosis, adopted, note}
     created_at: datetime | None = None
 
 
@@ -278,6 +282,12 @@ class BenchmarkEntry(BaseModel):
     truth_sigma: float | None = None
     truth_method: str = ""
     notes: str = ""
+    clip_id: str | None = None
+    object: str = ""
+    unit: str = ""
+    expected_model: str | None = None  # the model that should win, for selection accuracy
+    is_failure_case: bool = False  # a deliberately bad clip: the right answer is low confidence
+    failure_expected: str | None = None  # what Ghostline should flag
 
 
 class BenchmarkRecord(BenchmarkEntry):

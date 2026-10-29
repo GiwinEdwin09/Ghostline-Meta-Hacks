@@ -2,9 +2,12 @@
 (build plan Part 21)."""
 
 import concurrent.futures
+import json
 import shutil
 from typing import Annotated, Literal
+from uuid import UUID
 
+import pandas as pd
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
@@ -15,40 +18,68 @@ from ghostline.api.deps import (
     ServicesDep,
     client_ip,
     hash_ip,
-    redact,
     require_passcode,
     start_job,
 )
 from ghostline.api.errors import ERROR_RESPONSES, ApiError
+from ghostline.api.explain import ExplainRequest, ExplainResponse
+from ghostline.api.explain import explain as run_explain
 from ghostline.api.schemas import (
     AnalyzeRequest,
     DeleteResult,
-    EventsPage,
+    EventsView,
     ExperimentCreate,
     ExperimentPatch,
-    ExperimentState,
     ProveRequest,
     RerunRequest,
     ReviseRequest,
+    SimulateBody,
+    SimulateResponse,
+)
+from ghostline.api.views import (
+    ExperimentSummaryView,
+    ExperimentView,
+    TrajectoryView,
+    _status,
+    event_view,
+    experiment_view,
+    summary_view,
+    trajectory_view,
 )
 from ghostline.jobs import lifecycle, stages
 from ghostline.jobs.errors import StageError
-from ghostline.jobs.stage_types import SimulateRequest, SimulateResult
+from ghostline.jobs.stage_types import SimulateRequest
 from ghostline.store.core_schemas import SimExport
-from ghostline.store.records import Experiment, Job
+from ghostline.store.records import Job
+from ghostline.store.volume import UnsafePath
 
 router = APIRouter(responses=ERROR_RESPONSES)
 
 _simulate_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="simulate")
 
 
+def _track_reader(services, experiment_id):
+    """Read a small JSON file the pipeline left in the experiment's folder (a ghost track)."""
+
+    def read(rel: str) -> dict | None:
+        try:
+            path = services.paths.resolve_media(experiment_id, rel)
+            if not path.is_file():
+                services.reload_volume()
+            return json.loads(path.read_text())
+        except (UnsafePath, OSError, ValueError):
+            return None
+
+    return read
+
+
 @router.post(
     "/experiments",
-    response_model=Experiment,
+    response_model=ExperimentView,
     status_code=201,
     dependencies=[Depends(require_passcode)],
 )
-def create_experiment(body: ExperimentCreate, repo: RepoDep) -> Experiment:
+def create_experiment(body: ExperimentCreate, services: ServicesDep, repo: RepoDep):
     experiment = repo.create_experiment(
         title=body.title,
         description=body.description,
@@ -56,10 +87,10 @@ def create_experiment(body: ExperimentCreate, repo: RepoDep) -> Experiment:
         declared_capture=body.declared_capture,
         setup=body.setup,
     )
-    return redact(experiment, admin=True)
+    return experiment_view(experiment, repo, _track_reader(services, experiment.id), admin=True)
 
 
-@router.get("/experiments", response_model=list[Experiment])
+@router.get("/experiments", response_model=list[ExperimentSummaryView])
 def list_experiments(
     request: Request,
     services: ServicesDep,
@@ -68,73 +99,93 @@ def list_experiments(
     examples: Annotated[bool, Query(description="Only the public example experiments")] = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[Experiment]:
+) -> list[ExperimentSummaryView]:
     """The gallery (`examples=true`) is public. Listing everything needs the passcode."""
     if not examples:
         require_passcode(request, services)
     rows = repo.list_experiments(examples_only=examples, limit=limit, offset=offset)
-    return [redact(e, admin) for e in rows]
+    return [summary_view(e, repo) for e in rows]
 
 
-@router.get("/experiments/{experiment_id}", response_model=ExperimentState)
+@router.get("/experiments/{experiment_id}", response_model=ExperimentView)
 def get_experiment(
     experiment: ExperimentDep, services: ServicesDep, repo: RepoDep, admin: AdminDep
-) -> ExperimentState:
+) -> ExperimentView:
     lifecycle.reap_stale_jobs(repo, services.settings, experiment.id)
     experiment = repo.get_experiment(experiment.id) or experiment
-    trials = repo.list_trials(experiment.id)
-    trial_ids = [t.id for t in trials]
-    jobs = repo.list_jobs(experiment.id, limit=20)
-    return ExperimentState(
-        **redact(experiment, admin).model_dump(),
-        trials=trials,
-        tracks=repo.list_tracks(trial_ids),
-        trajectories=repo.list_trajectories(trial_ids),
-        models=repo.list_models(experiment.id),
-        fits=repo.list_fits(experiment.id),
-        reviews=repo.list_reviews(experiment.id),
-        ghosts=repo.list_ghosts(experiment.id),
-        jobs=jobs,
-        active_job=next((j for j in jobs if j.status in ("queued", "running")), None),
-    )
+    return experiment_view(experiment, repo, _track_reader(services, experiment.id), admin)
 
 
 @router.patch(
     "/experiments/{experiment_id}",
-    response_model=Experiment,
+    response_model=ExperimentSummaryView,
     dependencies=[Depends(require_passcode)],
 )
-def patch_experiment(experiment: ExperimentDep, body: ExperimentPatch, repo: RepoDep) -> Experiment:
+def patch_experiment(
+    experiment: ExperimentDep, body: ExperimentPatch, repo: RepoDep
+) -> ExperimentSummaryView:
     """Rename, or publish as an example (an example is always public)."""
     fields = body.model_dump(exclude_none=True)
     if fields.get("is_example"):
         fields["visibility"] = "public"
     if not fields:
-        return redact(experiment, admin=True)
+        return summary_view(experiment, repo)
     updated = repo.update_experiment(experiment.id, **fields)
-    return redact(updated or experiment, admin=True)
+    return summary_view(updated or experiment, repo)
 
 
-@router.get("/experiments/{experiment_id}/events", response_model=EventsPage)
+@router.get("/experiments/{experiment_id}/events", response_model=EventsView)
 def list_events(
     experiment: ExperimentDep,
     services: ServicesDep,
     repo: RepoDep,
     after: Annotated[int, Query(ge=0, description="Return events with a higher seq")] = 0,
     limit: Annotated[int, Query(ge=1, le=1000)] = 500,
-) -> EventsPage:
+) -> EventsView:
     """Poll this every second while a job runs. One response carries the new events, the
     experiment status and the job's phase and progress."""
     lifecycle.reap_stale_jobs(repo, services.settings, experiment.id)
     events = repo.list_events(experiment.id, after=after, limit=limit)
     fresh = repo.get_experiment(experiment.id) or experiment
-    jobs = repo.list_jobs(experiment.id, limit=1)
-    return EventsPage(
-        events=events,
+    jobs = repo.list_jobs(experiment.id, limit=5)
+    active = next((j for j in jobs if j.status in ("queued", "running")), None)
+    return EventsView(
+        events=[event_view(e) for e in events],
         last_seq=events[-1].seq if events else after,
-        status=fresh.status,
-        job=jobs[0] if jobs else None,
+        status=_status(fresh, jobs),
+        job=active or (jobs[0] if jobs else None),
     )
+
+
+@router.get(
+    "/experiments/{experiment_id}/trials/{trial_id}/trajectory", response_model=TrajectoryView
+)
+def get_trajectory(
+    experiment: ExperimentDep, trial_id: UUID, services: ServicesDep, repo: RepoDep
+) -> TrajectoryView:
+    """The trial's trajectory as JSON, built from trajectory.parquet: metres, radians and
+    seconds, with the pixel trail, the training split and the events."""
+    trial = repo.get_trial(trial_id)
+    if trial is None or trial.experiment_id != experiment.id:
+        raise ApiError(404, "trial_not_found", "That clip doesn't belong to this experiment.")
+    record = next(iter(repo.list_trajectories([trial_id])), None)
+    if record is None or not record.parquet_path:
+        raise ApiError(404, "trajectory_not_found", "This clip has no trajectory yet.")
+    try:
+        path = services.paths.resolve_media(experiment.id, record.parquet_path)
+        if not path.is_file():
+            services.reload_volume()
+        frame = pd.read_parquet(path)
+        tracks_rel = trial.paths.get("tracks")
+        key = record.summary.get("object_key")
+        tracks = None
+        if key:
+            tracks_path = services.paths.trial_file(experiment.id, trial_id, "tracks.parquet")
+            tracks = pd.read_parquet(tracks_path) if tracks_path.is_file() else None
+        del tracks_rel
+    except (UnsafePath, OSError, ValueError) as exc:
+        raise ApiError(404, "trajectory_not_found", "The trajectory file isn't there.") from exc
+    return trajectory_view(frame, record.summary, tracks, key)
 
 
 # --- jobs ----------------------------------------------------------------------------------
@@ -273,19 +324,26 @@ def verify_export(experiment: ExperimentDep, services: ServicesDep, repo: RepoDe
 # --- synchronous: simulate and export ------------------------------------------------------
 @router.post(
     "/experiments/{experiment_id}/simulate",
-    response_model=SimulateResult,
+    response_model=SimulateResponse,
     dependencies=[Depends(require_passcode)],
 )
 def simulate(
-    experiment: ExperimentDep, body: SimulateRequest, services: ServicesDep, repo: RepoDep
-) -> SimulateResult:
+    experiment: ExperimentDep, body: SimulateBody, services: ServicesDep, repo: RepoDep
+) -> SimulateResponse:
     """Simulate a model, including a Wonder-written one, in at most SIMULATE_TIMEOUT_S."""
-    model = repo.get_model(experiment.id, body.model_id)
+    model_id = body.model_id or experiment.winner_model_id
+    model = repo.get_model(experiment.id, model_id) if model_id else None
     if model is None:
         raise ApiError(404, "model_not_found", "That model doesn't belong to this experiment.")
-    future = _simulate_pool.submit(stages.simulate_custom_model, repo, experiment, model, body)
+    request = SimulateRequest(
+        model_id=model.id,
+        params={**body.params, **body.initial},
+        t_end_s=body.t_end,
+        n_points=min(max(round(body.t_end / body.dt) + 1, 2), 5000),
+    )
+    future = _simulate_pool.submit(stages.simulate_custom_model, repo, experiment, model, request)
     try:
-        return future.result(timeout=services.settings.simulate_timeout_s)
+        result = future.result(timeout=services.settings.simulate_timeout_s)
     except concurrent.futures.TimeoutError:
         future.cancel()
         raise ApiError(
@@ -295,6 +353,21 @@ def simulate(
         ) from None
     except StageError as exc:
         raise ApiError(422, exc.code, exc.message) from exc
+    return SimulateResponse(**result.model_dump(), observables=list(result.series.values()))
+
+
+@router.post(
+    "/experiments/{experiment_id}/explain",
+    response_model=ExplainResponse,
+    dependencies=[Depends(require_passcode)],
+)
+def explain(
+    experiment: ExperimentDep, body: ExplainRequest, services: ServicesDep, repo: RepoDep
+) -> ExplainResponse:
+    """Wonder's two or three sentences on a What-if result. Cached per question."""
+    if experiment.status != "complete" or experiment.conclusion is None:
+        raise ApiError(409, "not_analyzed", "There is nothing to explain yet.")
+    return run_explain(services, repo, experiment, body)
 
 
 @router.get(

@@ -100,7 +100,7 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
             ) : null}
             {timing ? (
               <>
-                <Fact label="Frame rate" value={`${timing.detected_fps} fps`} sub={timing.declared_mode === "slowmo" ? "slow-mo" : "normal video"} />
+                <Fact label="Frame rate" value={`${timing.detected_fps} fps`} sub={timing.declared_mode === "slow_mo" ? "slow-mo" : "normal video"} />
                 <Fact label="Timing" value={timing.classification === "cfr" ? "Steady" : timing.classification.replace("_", " ")} sub={`jitter ${timing.jitter_pct}%`} />
                 <Fact label="Time factor" value={`${timing.time_factor}×`} sub={timing.time_factor === 1 ? "original file" : "re-timed"} />
               </>

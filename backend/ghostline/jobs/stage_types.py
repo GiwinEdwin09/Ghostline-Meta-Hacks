@@ -66,6 +66,8 @@ class GhostResult(BaseModel):
     slow_video_path: str | None = None
     divergence_onset_s: float | None = None
     max_error_mm: float | None = None
+    threshold_mm: float | None = None  # tau, for the error chart
+    predicted_ahead_s: float | None = None  # seconds predicted past the launch window
 
 
 class RevisionResult(BaseModel):
