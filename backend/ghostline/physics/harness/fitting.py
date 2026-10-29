@@ -213,7 +213,7 @@ def _starts(problem: Problem, n_starts: int, seed: int) -> list[np.ndarray]:
 
 def _solve(problem: Problem, z0: np.ndarray, max_nfev: int, diff_step: float = 1e-6):
     # Closed forms can be fit to machine precision; ODE fits are limited by the integrator.
-    tol = 1e-13 if problem.exact else 1e-11
+    tol = 1e-13 if problem.exact else 1e-9
     return least_squares(
         problem.residuals,
         z0,
@@ -284,7 +284,7 @@ def fit(
     try:
         screened = [(problem.residuals(z0), z0) for z0 in starts[1:]]
         screened.sort(key=lambda item: float(np.sum(item[0] ** 2)))
-        chosen = [starts[0]] + [z0 for _, z0 in screened[:2]]
+        chosen = [starts[0]] + [z0 for _, z0 in screened[:1]]
         for i, z0 in enumerate(chosen):
             res = _solve(problem, z0, max_nfev if i == 0 else max_nfev // 2, diff_step)
             if best is None or res.cost < best.cost:

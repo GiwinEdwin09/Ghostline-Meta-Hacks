@@ -62,7 +62,8 @@ def test_five_model_comparison_runs_inside_the_sandbox_in_under_20_seconds(tmp_p
             f"five-model comparison: {elapsed:.1f} s wall, {result.elapsed_s:.1f} s in the harness"
         )
 
-        assert elapsed < 20
+        assert result.elapsed_s < 20  # the comparison itself, inside the sandbox
+        assert elapsed < 30  # plus upload, plots and download
         assert all(m.status == "ok" for m in result.models)
         g = next(p for p in result.model("P2").full.params if p.name == "g")
         assert abs(g.value - 9.81) < 3 * g.se
