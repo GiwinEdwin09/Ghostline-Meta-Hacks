@@ -245,9 +245,7 @@ class Ramp(System):
     def events(self):
         out = super().events()
         if self.acc > 0:
-            out["stop_t_s"] = self.t_release + float(
-                np.sqrt(2 * (self.s_max - self.s0) / self.acc)
-            )
+            out["stop_t_s"] = self.t_release + float(np.sqrt(2 * (self.s_max - self.s0) / self.acc))
         return out
 
     def params(self):

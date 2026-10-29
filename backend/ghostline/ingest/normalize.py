@@ -136,10 +136,20 @@ def make_derived(master: str | Path, out_dir: str | Path, has_audio_from: str | 
     )  # fmt: skip
     if has_audio_from:
         _ffmpeg(
-            "-i", str(has_audio_from), "-vn", "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le",
+            "-i",
+            str(has_audio_from),
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "48000",
+            "-c:a",
+            "pcm_s16le",
             str(out / "audio.wav"),
         )
 
 
 def make_poster(master: str | Path, dest: str | Path, at_s: float) -> None:
-    _ffmpeg("-ss", f"{max(at_s, 0):.3f}", "-i", str(master), "-frames:v", "1", "-q:v", "3", str(dest))
+    _ffmpeg(
+        "-ss", f"{max(at_s, 0):.3f}", "-i", str(master), "-frames:v", "1", "-q:v", "3", str(dest)
+    )

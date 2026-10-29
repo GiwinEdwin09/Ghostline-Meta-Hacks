@@ -47,7 +47,7 @@ def guess_paper(corners: np.ndarray) -> tuple[str, float, bool]:
 
 
 def corners_mm(corners_px: np.ndarray, paper: str) -> np.ndarray:
-    """Sheet-frame corners for an ordered image quad: the longer pair of sides gets the long edge."""
+    """Sheet-frame corners for an ordered image quad; the longer sides get the long edge."""
     short, long = sorted(PAPER_MM[paper])
     top, side = side_lengths(corners_px)
     w, h = (long, short) if top >= side else (short, long)
@@ -75,7 +75,7 @@ def apply_h(h: np.ndarray, pts: np.ndarray) -> np.ndarray:
 
 
 def local_scale(h: np.ndarray, p: np.ndarray, eps: float = 0.5) -> float:
-    """Millimetres per pixel at image point p: sqrt(|det J|) of the mapping, by central differences."""
+    """Millimetres per pixel at image point p: sqrt(|det J|) of the mapping."""
     p = np.asarray(p, float)
     dx = (apply_h(h, p + [eps, 0]) - apply_h(h, p - [eps, 0]))[0] / (2 * eps)
     dy = (apply_h(h, p + [0, eps]) - apply_h(h, p - [0, eps]))[0] / (2 * eps)

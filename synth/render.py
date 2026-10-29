@@ -291,12 +291,15 @@ def _postprocess(path: Path, spec: ClipSpec) -> None:
             "-i", str(path), "-c:v", "libx265", "-preset", "ultrafast", "-crf", str(spec.crf),
             "-pix_fmt", "yuv420p10le", "-color_primaries", "bt2020", "-color_trc", "arib-std-b67",
             "-colorspace", "bt2020nc", "-tag:v", "hvc1", "-fps_mode", "passthrough",
-            "-x265-params", "colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:log-level=error",
+            "-x265-params",
+            "colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:log-level=error",
             str(tmp),
         )  # fmt: skip
         tmp.replace(path)
     if spec.rotation_tag:
-        _ffmpeg("-display_rotation", str(spec.rotation_tag), "-i", str(path), "-c", "copy", str(tmp))
+        _ffmpeg(
+            "-display_rotation", str(spec.rotation_tag), "-i", str(path), "-c", "copy", str(tmp)
+        )
         tmp.replace(path)
 
 
@@ -307,38 +310,67 @@ def _stats(mask: np.ndarray, roi: tuple[int, int, int, int]) -> tuple[float, np.
     return float(len(xs)), np.array([xs.mean() + roi[0], ys.mean() + roi[1]])
 
 
+@dataclass
+class Scene:
+    """The static part of a clip: system, camera, sheet and the background plate."""
+
+    system: object
+    cam: Camera
+    corners_world: np.ndarray  # (4, 3) sheet corners
+    plate: np.ndarray  # float32 BGR, no moving object
+    sheet_mask: np.ndarray  # uint8 0/255, like a segmentation mask
+
+    @property
+    def plate_u8(self) -> np.ndarray:
+        return self.plate.clip(0, 255).astype(np.uint8)
+
+    @property
+    def corners_px(self) -> np.ndarray:
+        """Sheet corners in pixels: top-left, top-right, bottom-right, bottom-left."""
+        return self.cam.project(self.corners_world)
+
+
+def build_scene(spec: ClipSpec) -> Scene:
+    """Camera, sheet and plate for a spec, without rendering any frames (fast)."""
+    rng = np.random.default_rng(spec.seed)
+    system = make_system(spec.system, spec.plane_offset_m, **spec.params)
+    w, h = spec.size
+    corners_w = sheet_corners_world(
+        spec.sheet_center, spec.sheet_rot_deg, spec.sheet_landscape, spec.paper_m
+    )
+    cam0 = _auto_camera(spec, system, corners_w)
+    plate = _texture(h, w, rng)
+    sheet_shape = [
+        {"p": Prim("poly", "sheet", PAPER_BGR, pts=corners_w), "pts": cam0.project(corners_w)}
+    ]
+    cov = _coverage(sheet_shape, (h, w))[..., None]
+    light = (0.93 + 0.07 * np.linspace(0, 1, w, dtype=np.float32))[None, :, None]
+    plate = plate * (1 - cov) + np.array(PAPER_BGR, np.float32) * light * cov
+    for prim in system.static():
+        plate = _composite(plate, [_project_prim(cam0, prim)], prim.color)
+    return Scene(system, cam0, corners_w, plate, ((cov[..., 0] > 0.5) * 255).astype(np.uint8))
+
+
 def render_clip(spec: ClipSpec, out_dir: str | Path, name: str | None = None) -> ClipResult:
     """Render one clip and its ground truth into `out_dir`."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     name = name or spec.system
-    rng = np.random.default_rng(spec.seed)
-    system = make_system(spec.system, spec.plane_offset_m, **spec.params)
+    rng = np.random.default_rng(spec.seed + 1)
+    scene = build_scene(spec)
+    system, cam0, corners_w, plate, sheet_mask = (
+        scene.system, scene.cam, scene.corners_world, scene.plate, scene.sheet_mask,
+    )  # fmt: skip
+    plate_u8 = scene.plate_u8
     w, h = spec.size
     n = int(round(spec.duration_s * spec.capture_fps))
     t_cap = np.arange(n) / spec.capture_fps
-    corners_w = sheet_corners_world(
-        spec.sheet_center, spec.sheet_rot_deg, spec.sheet_landscape, spec.paper_m
-    )
-    cam0 = _auto_camera(spec, system, corners_w)
 
     shift = np.zeros((n, 2))
     if spec.shake_sigma_px:
         shift += rng.normal(0, spec.shake_sigma_px, (n, 2))
     shift += np.linspace(0, 1, n)[:, None] * np.asarray(spec.drift_px)[None]
     moving_cam = bool(np.any(shift))
-
-    # Static plate: texture, lit sheet, static props.
-    plate = _texture(h, w, rng)
-    sheet_px = cam0.project(corners_w)
-    sheet_shape = [{"p": Prim("poly", "sheet", PAPER_BGR, pts=corners_w), "pts": sheet_px}]
-    cov = _coverage(sheet_shape, (h, w))[..., None]
-    light = (0.93 + 0.07 * np.linspace(0, 1, w, dtype=np.float32))[None, :, None]
-    plate = plate * (1 - cov) + np.array(PAPER_BGR, np.float32) * light * cov
-    for prim in system.static():
-        plate = _composite(plate, [_project_prim(cam0, prim)], prim.color)
-    plate_u8 = plate.clip(0, 255).astype(np.uint8)
-    sheet_mask = ((cov[..., 0] > 0.5) * 255).astype(np.uint8)
 
     # Ground truth that does not need rendering.
     truth = system.truth(t_cap)
@@ -392,7 +424,9 @@ def render_clip(spec: ClipSpec, out_dir: str | Path, name: str | None = None) ->
                     patch = base[y0:y1, x0:x1].copy()
                     if thin:
                         a_thin = _thin_alpha(thin, roi)
-                        patch = patch * (1 - a_thin) + np.array((235, 235, 235), np.float32) * a_thin
+                        patch = (
+                            patch * (1 - a_thin) + np.array((235, 235, 235), np.float32) * a_thin
+                        )
                     if solid and roi_s is not None:
                         sx0, sy0, sx1, sy1 = roi_s
                         sub = patch[sy0 - y0 : sy1 - y0, sx0 - x0 : sx1 - x0]
@@ -463,8 +497,13 @@ def render_clip(spec: ClipSpec, out_dir: str | Path, name: str | None = None) ->
         "events": system.events(),
         "plane_offset_m": system.d,
         "video": {
-            "file": video.name, "width": w, "height": h, "n_frames": n,
-            "stored_size": list(stored), "rotation_tag": spec.rotation_tag, "hdr": spec.hdr,
+            "file": video.name,
+            "width": w,
+            "height": h,
+            "n_frames": n,
+            "stored_size": list(stored),
+            "rotation_tag": spec.rotation_tag,
+            "hdr": spec.hdr,
         },  # fmt: skip
         "timing": {
             "capture_fps": spec.capture_fps,
@@ -476,14 +515,19 @@ def render_clip(spec: ClipSpec, out_dir: str | Path, name: str | None = None) ->
             "usable_range": [head, n - tail],
         },
         "camera": {
-            "f_px": cam0.f_px, "K": cam0.K.tolist(), "R": cam0.R.tolist(),
-            "center_m": cam0.center.tolist(), "distance_m": float(np.linalg.norm(cam0.center)),
+            "f_px": cam0.f_px,
+            "K": cam0.K.tolist(),
+            "R": cam0.R.tolist(),
+            "center_m": cam0.center.tolist(),
+            "distance_m": float(np.linalg.norm(cam0.center)),
         },  # fmt: skip
         "sheet": {
-            "size_m": list(spec.paper_m), "landscape": spec.sheet_landscape,
+            "size_m": list(spec.paper_m),
+            "landscape": spec.sheet_landscape,
             "corners_world_m": corners_w[:, :2].tolist(),
             "corners_px": corners_px.round(4).tolist(),
-            "mask_file": sheet_path.name, "plate_file": plate_path.name,
+            "mask_file": sheet_path.name,
+            "plate_file": plate_path.name,
         },
         "tracks": tracks,
         "series": {k: np.asarray(v).round(8).tolist() for k, v in truth["series"].items()},

@@ -25,6 +25,7 @@ class AspectCheck(BaseModel):
     paper_aspect: float
     error_rel: float | None = None
     passed: bool = True
+    pose_ratio: float | None = None  # real x/y proportions over the assumed ones; about 1 if right
 
 
 class OffsetInfo(BaseModel):

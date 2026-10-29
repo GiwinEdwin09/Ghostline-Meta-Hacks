@@ -35,14 +35,15 @@ from .ramp import ramp_angle_from_mask, top_edge_points
 from .sheet import (
     MIN_SIGMA_PX,
     SheetDetection,
-    mask_edge_points,
-    largest_component,
-    min_area_rect_detection,
     detect_sheet_corners,
+    largest_component,
+    mask_edge_points,
+    min_area_rect_detection,
 )
 from .uncertainty import N_DRAWS, monte_carlo
 
 ASPECT_TOLERANCE = 0.02
+POSE_RATIO_TOLERANCE = 0.05
 TIMING_KEYS = ("classification", "time_factor", "time_factor_source", "jitter_rel", "real_fps",
                "sigma_time_rel", "retimed", "needs_confirmation")  # fmt: skip
 
@@ -128,6 +129,16 @@ def calibrate(
         check = AspectCheck(method="corners_only", paper_aspect=float(paper_aspect))
 
     w, hgt = image_size
+    ratio = offset_math.pose_aspect_ratio(h, offset_math.focal_px(w, f35_mm), image_size)
+    check = check.model_copy(update={"pose_ratio": ratio})
+    if ratio is not None and abs(ratio - 1) > POSE_RATIO_TOLERANCE:
+        notices.append(
+            Notice(
+                code="paper_size_mismatch",
+                message=f"The sheet's proportions don't look like {paper_name} (they are off by "
+                f"{abs(ratio - 1):.0%}). Check that the paper size is right.",
+            )
+        )
     centre_px = np.array([(w - 1) / 2, (hgt - 1) / 2])
     f_px = offset_math.focal_px(w, f35_mm)
     pose = offset_math.pose_from_homography(h, f_px, image_size)
@@ -161,13 +172,19 @@ def calibrate(
         ramp_edge, gravity.down, N_DRAWS, seed,
     )  # fmt: skip
     if ramp_mask is not None:
-        sigma = float(np.sqrt(angle.sigma_deg**2 + (mc.sigma_ramp_deg or 0) ** 2 + gravity.sigma_deg**2))
-        ramp_info = RampInfo(angle_deg=angle.angle_deg, incline_deg=angle.incline_deg, sigma_deg=sigma)
+        sigma = float(
+            np.sqrt(angle.sigma_deg**2 + (mc.sigma_ramp_deg or 0) ** 2 + gravity.sigma_deg**2)
+        )
+        ramp_info = RampInfo(
+            angle_deg=angle.angle_deg, incline_deg=angle.incline_deg, sigma_deg=sigma
+        )
 
     motion_info = None
     if corner_sets is not None:
         cm = camera_motion(corner_sets)
-        motion_info = MotionInfo(max_shift_px=cm.max_shift_px, status=cm.status, shifts_px=cm.shifts_px)
+        motion_info = MotionInfo(
+            max_shift_px=cm.max_shift_px, status=cm.status, shifts_px=cm.shifts_px
+        )
         if cm.status == "stop":
             notices.append(
                 Notice(
@@ -203,13 +220,19 @@ def calibrate(
         mm_per_px_center=local_scale(h, centre_px),
         aspect_check=check,
         offset=OffsetInfo(
-            d_m=plane_offset_m, f35_mm=f35_mm or offset_math.DEFAULT_F35_MM,
-            f35_source="metadata" if f35_mm else "default", f_px=f_px, z_m=z_m, scale=scale,
+            d_m=plane_offset_m,
+            f35_mm=f35_mm or offset_math.DEFAULT_F35_MM,
+            f35_source="metadata" if f35_mm else "default",
+            f_px=f_px,
+            z_m=z_m,
+            scale=scale,
             method=z_method,
         ),  # fmt: skip
         gravity=GravityInfo(
-            source=gravity.source, down_sheet=(float(gravity.down[0]), float(gravity.down[1])),
-            angle_deg=gravity.angle_deg, sigma_deg=gravity.sigma_deg,
+            source=gravity.source,
+            down_sheet=(float(gravity.down[0]), float(gravity.down[1])),
+            angle_deg=gravity.angle_deg,
+            sigma_deg=gravity.sigma_deg,
         ),  # fmt: skip
         ramp=ramp_info,
         camera_motion=motion_info,

@@ -115,7 +115,9 @@ class TrajectoryResult:
         out = Path(out_dir)
         out.mkdir(parents=True, exist_ok=True)
         self.trajectory.to_parquet(out / "trajectory.parquet", index=False)
-        (out / "traj_summary.json").write_text(json.dumps(self.summary, indent=2, default=_jsonable))
+        (out / "traj_summary.json").write_text(
+            json.dumps(self.summary, indent=2, default=_jsonable)
+        )
 
 
 def _jsonable(o):

@@ -43,16 +43,19 @@ def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
 def suggest_trim(
     energy: np.ndarray, t_real: np.ndarray, usable: tuple[int, int] | None = None
 ) -> TrimSuggestion:
-    """Window where the frame difference exceeds median + 5 MAD, padded by 0.3 s each side.
+    """Window where the frame difference exceeds the noise level + 5 MAD, padded 0.3 s each side.
 
     `usable` restricts the search to frames [lo, hi), for clips with a mixed frame rate.
     """
     lo, hi = usable or (0, len(energy))
     t_real, energy = t_real[lo:hi], energy[lo:hi]
     n = len(energy)
-    median = float(np.median(energy))
-    mad = float(np.median(np.abs(energy - median))) * 1.4826
-    threshold = median + MAD_K * max(mad, ENERGY_FLOOR)
+    # The plan's median + 5 MAD, but taken from the quietest half: when the motion fills more than
+    # half the clip (a long swing) the plain median is already motion.
+    base = float(np.percentile(energy, 25))
+    quiet = energy[energy <= np.median(energy)]
+    mad = float(np.median(np.abs(quiet - base))) * 1.4826
+    threshold = base + MAD_K * max(mad, ENERGY_FLOOR)
     active = energy > threshold
     dt = float(np.median(np.diff(t_real))) if n > 1 else 1.0
     bridge = max(1, round(BRIDGE_S / dt))

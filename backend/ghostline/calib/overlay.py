@@ -40,7 +40,9 @@ def draw_overlay(image_bgr: np.ndarray, calib: Calibration, grid_mm: float = 50.
 
 def _line(img, h_inv, a_mm, b_mm, color, w, h) -> None:
     a, b = apply_h(h_inv, np.array([a_mm, b_mm]))
-    ok, p, q = cv2.clipLine((0, 0, w, h), tuple(np.round(a).astype(int)), tuple(np.round(b).astype(int)))
+    ok, p, q = cv2.clipLine(
+        (0, 0, w, h), tuple(np.round(a).astype(int)), tuple(np.round(b).astype(int))
+    )
     if ok:
         cv2.line(img, p, q, color, 1, cv2.LINE_AA)
 
@@ -50,7 +52,10 @@ def rectified_image(
 ) -> np.ndarray:
     """The sheet plane seen head-on, with a margin around the sheet."""
     pw, ph = calib.paper_mm
-    size = (int(round((pw + 2 * margin_mm) * px_per_mm)), int(round((ph + 2 * margin_mm) * px_per_mm)))
+    size = (
+        int(round((pw + 2 * margin_mm) * px_per_mm)),
+        int(round((ph + 2 * margin_mm) * px_per_mm)),
+    )
     to_rect = np.array(
         [[px_per_mm, 0, margin_mm * px_per_mm], [0, px_per_mm, margin_mm * px_per_mm], [0, 0, 1]]
     )

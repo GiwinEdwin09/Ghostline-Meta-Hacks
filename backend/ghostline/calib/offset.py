@@ -41,6 +41,22 @@ def _decompose(h_px_to_mm: np.ndarray, f_px: float, image_size: tuple[int, int])
     return m, (l1 + l2) / 2 * (1 if m[2, 2] > 0 else -1)
 
 
+def pose_aspect_ratio(
+    h_px_to_mm: np.ndarray, f_px: float, image_size: tuple[int, int]
+) -> float | None:
+    """How much wider (x) than tall (y) the real sheet is than the paper size assumed in H.
+
+    A rectangle seen by a camera with known focal length has orthogonal, equally long image axes;
+    for the wrong paper size they differ by the ratio of the sizes (A4 vs Letter is 9%). About 1
+    for the right paper, unless the focal-length guess is far off and the camera strongly tilted.
+    """
+    dec = _decompose(h_px_to_mm, f_px, image_size)
+    if dec is None:
+        return None
+    m, _ = dec
+    return float(np.linalg.norm(m[:, 0]) / np.linalg.norm(m[:, 1]))
+
+
 def pose_from_homography(
     h_px_to_mm: np.ndarray, f_px: float, image_size: tuple[int, int]
 ) -> tuple[float, np.ndarray] | None:
@@ -80,16 +96,12 @@ def depth_of_sheet_points(
     return (p[:, 0] * m[2, 0] + p[:, 1] * m[2, 1] + m[2, 2]) / kappa
 
 
-def to_plane_of_motion(
-    sheet_mm: np.ndarray, centre_mm: np.ndarray, scale: float
-) -> np.ndarray:
+def to_plane_of_motion(sheet_mm: np.ndarray, centre_mm: np.ndarray, scale: float) -> np.ndarray:
     """world = c + (H(p) - c) * (1 - d/Z), for sheet-frame points of shape (N, 2)."""
     return centre_mm + (np.asarray(sheet_mm) - centre_mm) * scale
 
 
-def from_plane_of_motion(
-    plane_mm: np.ndarray, centre_mm: np.ndarray, scale: float
-) -> np.ndarray:
+def from_plane_of_motion(plane_mm: np.ndarray, centre_mm: np.ndarray, scale: float) -> np.ndarray:
     """Inverse of `to_plane_of_motion`, used to draw the ghost back on the image."""
     return centre_mm + (np.asarray(plane_mm) - centre_mm) / scale
 

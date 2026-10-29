@@ -65,17 +65,29 @@ def _capture_fps(tags: dict[str, str]) -> float | None:
 
 
 def read_timestamps(path: str | Path) -> np.ndarray:
-    """Presentation time of every video frame in file seconds, from packets (no decoding)."""
+    """Presentation time of every video frame in file seconds, from packets (no decoding).
+
+    Integer timestamps times the stream time base, because ffprobe's own *_time fields are rounded
+    to microseconds, which would skew a frame rate computed from them.
+    """
+    base = _run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=time_base",
+         "-of", "csv=p=0", str(path)]
+    ).strip().strip(",")  # fmt: skip
+    try:
+        time_base = float(Fraction(base))
+    except (ValueError, ZeroDivisionError) as e:
+        raise IngestError("the video stream has no time base") from e
     out = _run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-         "packet=pts_time,dts_time", "-of", "csv=p=0", str(path)]
+         "packet=pts,dts", "-of", "csv=p=0", str(path)]
     )  # fmt: skip
     values = []
     for line in out.splitlines():
         pts, _, dts = line.strip().partition(",")
         for token in (pts, dts.strip(",")):
             if token and token != "N/A":
-                values.append(float(token))
+                values.append(int(token) * time_base)
                 break
     if not values:
         raise IngestError("the video stream has no timestamps")

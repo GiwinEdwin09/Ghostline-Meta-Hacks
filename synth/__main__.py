@@ -22,7 +22,7 @@ def main() -> None:
     p.add_argument("--hdr", action="store_true")
     p.add_argument("--noise", type=float, default=2.0, help="sensor noise sigma, grey levels")
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--params", default="{}", help='system overrides as JSON, e.g. \'{"e": 0.6}\'')
+    p.add_argument("--params", default="{}", help="system overrides as JSON, e.g. '{\"e\": 0.6}'")
     a = p.parse_args()
     w, h = (int(v) for v in a.size.lower().split("x"))
     spec = ClipSpec(

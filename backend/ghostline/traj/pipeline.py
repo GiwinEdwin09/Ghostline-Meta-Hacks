@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 from ghostline.calib.gravity import Gravity, from_free_fall, plumb_from_oscillation
-from ghostline.calib.offset import depth_of_sheet_points
 from ghostline.calib.model import Calibration
+from ghostline.calib.offset import depth_of_sheet_points
 from ghostline.calib.ramp import cross_check
 from ghostline.ingest.models import Notice
 
@@ -34,7 +34,7 @@ from .model import (
     TrackSeries,
     TrajectoryResult,
 )
-from .noise import local_fit, noise_sigma
+from .noise import local_fit, noise_sigma, robust_std
 
 FLIGHT_SYSTEMS = ("free_fall", "projectile", "bounce")
 MIN_SAMPLES = 10
@@ -129,8 +129,24 @@ def build_trajectory(
     plane_mm = calib.px_to_plane_mm(tracks.px[kept])
     xy = calib.plane_mm_to_world(plane_mm, calib.gravity_down)
 
+    # A fast spinner turns too sharply for a 15-frame cubic, so its position noise comes from how
+    # far the marker strays from a circle around the hub instead.
+    hub_mm = None
+    spin_sigma = None
+    if system == "spin_down":
+        if hub is not None:
+            hub_mm = calib.px_to_plane_mm(_static_point(hub)[None])[0]
+        else:
+            circle = fit_circle(plane_mm)
+            hub_mm = circle.centre
+        radial = np.hypot(*(plane_mm - hub_mm).T) / 1000
+        spin_sigma = robust_std(radial - np.median(radial))
+
     fit0 = local_fit(t, xy)
-    sigma_pos = max(float(np.sqrt(np.mean(noise_sigma(fit0) ** 2))), MIN_SIGMA_PX * calib.m_per_px)
+    sigma_pos = (
+        spin_sigma if spin_sigma is not None else float(np.sqrt(np.mean(noise_sigma(fit0) ** 2)))
+    )
+    sigma_pos = max(sigma_pos, MIN_SIGMA_PX * calib.m_per_px)
     ev = detect_release_stop(t, xy, fit0, sigma_pos)
     if ev.release_t is None:
         notices.append(
@@ -151,7 +167,7 @@ def build_trajectory(
             notices.append(Notice(code="no_impacts", message="No bounces were found."))
 
     # pivot / hub in the sheet-plane millimetre frame
-    pivot_mm = hub_mm = None
+    pivot_mm = None
     circle = None
     if system == "pendulum":
         if pivot is not None:
@@ -167,12 +183,6 @@ def build_trajectory(
                         "locate the pivot from its path. Track the pivot or enter the length.",
                     )
                 )
-    elif system == "spin_down":
-        if hub is not None:
-            hub_mm = calib.px_to_plane_mm(_static_point(hub)[None])[0]
-        else:
-            circle = fit_circle(plane_mm)
-            hub_mm = circle.centre
 
     # which way is down
     down = calib.gravity_down
@@ -239,13 +249,14 @@ def build_trajectory(
             notices.append(
                 Notice(
                     code="spin_direction_inconsistent",
-                    message="The spin direction flips during the clip; the angle may be unreliable.",
+                    message="The spin direction flips during the clip; the angle may be "
+                    "unreliable.",
                 )
             )
 
     # final fits: noise, velocities
     fit = local_fit(t, xy, segment)
-    sig_xy = noise_sigma(fit)
+    sig_xy = noise_sigma(fit) if spin_sigma is None else np.array([spin_sigma, spin_sigma])
     sigma_pos = float(np.sqrt(np.mean(sig_xy**2)))
     sigma_angle = omega = None
     if angle is not None:
@@ -287,13 +298,17 @@ def build_trajectory(
     # checks
     in_window = (flags & FLAG_AT_REST) == 0
     speed = np.hypot(fit.slope[:, 0], fit.slope[:, 1])
-    columns = {"x": xy[:, 0], "y": xy[:, 1]}
+    columns = {"x": xy[:, 0], "y": xy[:, 1], "t": t}
     if angle is not None:
         columns[angle_name] = angle
-    # area in (depth / f)^2 units: removes the perspective change of a camera not square to the sheet
+    # area in (depth / f)^2 units: removes the perspective change of a camera that is not square
+    # to the sheet
     area_kept = tracks.area[kept]
     depth = depth_of_sheet_points(
-        calib.H_np, calib.offset.f_px, calib.image_size, calib.px_to_plane_mm(tracks.px[kept], False)
+        calib.H_np,
+        calib.offset.f_px,
+        calib.image_size,
+        calib.px_to_plane_mm(tracks.px[kept], False),
     )
     metric_area = area_kept if depth is None else area_kept * (depth / calib.offset.f_px) ** 2
     oop = out_of_plane(
@@ -351,7 +366,9 @@ def _summary(
     drops.pop("", None)
     win = df[in_window] if in_window.any() else df
     cols = ["x", "y"] + ([angle_name] if angle_name else [])
-    idx = np.unique(np.linspace(0, len(win) - 1, min(N_SAMPLE_POINTS, len(win))).round().astype(int))
+    idx = np.unique(
+        np.linspace(0, len(win) - 1, min(N_SAMPLE_POINTS, len(win))).round().astype(int)
+    )
     samples = win.iloc[idx][["t", *cols]].round(6).to_dict(orient="list")
     t0 = float(win["t"].iloc[0])
     t1 = float(win["t"].iloc[-1])

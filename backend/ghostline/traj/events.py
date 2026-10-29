@@ -13,9 +13,10 @@ NOISE_MEAN_FACTOR = 1.25  # mean of a 2D Rayleigh speed with unit-sigma componen
 SPEED_K = 3.0  # "3 sigma above noise"
 RELEASE_RUN = 5  # frames in a row
 STOP_DWELL_S = 0.5
-STOP_TAIL_S = 0.25  # a slow run that reaches the end of the clip counts after this long
+STOP_TAIL_S = 0.2  # a slow run that reaches the end of the clip counts after this long
 IMPACT_DROP_FRAMES = 2
 IMPACT_MIN_SPACING = 4  # frames between impacts
+IMPACT_SLOPE_K = 3.0
 G0 = 9.81
 RETIME_FACTORS = (2, 4, 8)
 RETIME_TOL = 0.2
@@ -48,7 +49,7 @@ class Events:
 def speed_and_threshold(fit: LocalFit, sigma_pos: float) -> tuple[np.ndarray, np.ndarray]:
     """Speed from the local fits and the level above which it counts as motion.
 
-    The threshold is the mean noise speed plus 3 sigma, with sigma from the fit's own slope variance.
+    The threshold is the mean noise speed plus 3 sigma, with sigma from the fit's slope variance.
     """
     speed = np.hypot(fit.slope[:, 0], fit.slope[:, 1])
     sigma_v = sigma_pos * fit.slope_factor
@@ -64,12 +65,10 @@ def _first_run(mask: np.ndarray, length: int) -> int | None:
     return None
 
 
-def detect_release_stop(
-    t: np.ndarray, xy: np.ndarray, fit: LocalFit, sigma_pos: float
-) -> Events:
+def detect_release_stop(t: np.ndarray, xy: np.ndarray, fit: LocalFit, sigma_pos: float) -> Events:
     """Release: speed above noise for five frames in a row, then backed up to where the object
     first leaves its resting position. Stop: speed under the threshold for more than 0.5 s (or
-    for 0.25 s up to the end of the clip), backed up to where it first settles."""
+    for 0.2 s up to the end of the clip), backed up to where it first settles."""
     ev = Events()
     speed, thr = speed_and_threshold(fit, sigma_pos)
     ev.speed, ev.speed_threshold = speed, thr
@@ -127,6 +126,10 @@ def detect_impacts(
         return []
     prominence = max(5 * sigma_pos, 0.003 * float(np.ptp(y)))
     peaks, _ = find_peaks(-y, prominence=prominence, distance=IMPACT_MIN_SPACING)
+    # a real impact reverses the velocity abruptly, so both sides must be clearly above the noise of
+    # a 4-point slope; a smooth minimum (a pendulum's lowest point) is not
+    slope_noise = sigma_pos * np.sqrt(12 / (4 * 15)) / float(np.median(np.diff(t)))
+    min_slope = IMPACT_SLOPE_K * slope_noise
     out = []
     for j in peaks:
         if j < 4 or j > len(y) - 5:
@@ -134,7 +137,7 @@ def detect_impacts(
         before, after = slice(j - 4, j), slice(j + 1, j + 5)
         sb, ib = _line(t[before], y[before])
         sa, ia = _line(t[after], y[after])
-        if not (sb < 0 < sa):
+        if not (sb < -min_slope and sa > min_slope):
             continue
         t_hit = (ib - ia) / (sa - sb) if sa != sb else t[j]
         if not t[j - 1] <= t_hit <= t[j + 1]:
@@ -153,7 +156,9 @@ def impact_drop_mask(frames: np.ndarray, impacts: list[Impact]) -> np.ndarray:
 
 def flight_segments(t: np.ndarray, impacts: list[Impact]) -> np.ndarray:
     """segment_id: 0 before the first impact, 1 between the first and second, and so on."""
-    return np.searchsorted(np.array([i.t for i in impacts]), t) if impacts else np.zeros(len(t), int)
+    return (
+        np.searchsorted(np.array([i.t for i in impacts]), t) if impacts else np.zeros(len(t), int)
+    )
 
 
 def retime_check(t: np.ndarray, y: np.ndarray, segment: np.ndarray, window: np.ndarray) -> dict:
@@ -187,8 +192,9 @@ def out_of_plane(
 
     Mask area scales as 1/Z^2, so dZ/Z is about dA / (2A). Motion blur also changes the mask area,
     roughly linearly with speed, so a linear speed term is removed first. What is left is flagged
-    when it varies by more than 5% and correlates with a position (|r| over 0.5). Motion toward
-    the camera that rises in step with speed, such as a drop, can't be told from blur this way.
+    when it varies by more than 5% and correlates with a position or with time (|r| over 0.5).
+    Motion toward the camera that rises in step with speed, such as a drop, can't be told from
+    blur this way.
     """
     ok = np.isfinite(area)
     if ok.sum() < 8:

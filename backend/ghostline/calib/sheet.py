@@ -209,4 +209,6 @@ def min_area_rect_detection(contour: np.ndarray, notices: list[Notice]) -> Sheet
             "bounding rectangle was used. Scale accuracy is reduced.",
         )
     )
-    return SheetDetection(order_corners(box), 1.0, float("nan"), [], "min_area_rect", False, notices)
+    return SheetDetection(
+        order_corners(box), 1.0, float("nan"), [], "min_area_rect", False, notices
+    )
