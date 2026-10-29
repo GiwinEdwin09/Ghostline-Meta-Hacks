@@ -108,9 +108,10 @@ def make_world(
     summary: dict[str, Any] | None = None,
     timing: dict[str, Any] | None = None,
     title: str = "Spin-down",
+    description: str = "",
 ) -> World:
     case = case or spin_case()
-    exp = repo.create_experiment(title=title, system_type="spin_down")
+    exp = repo.create_experiment(title=title, description=description, system_type="spin_down")
     scene = spin_scene()
     repo.update_experiment(exp.id, scene=scene)
     trial = repo.create_trial(experiment_id=exp.id, role="fit")
@@ -301,3 +302,55 @@ def conclude_message_json(items: list[dict[str, Any]]) -> dict[str, Any]:
                     body = text.split("Final numbers:\n", 1)[1].split("\n\nCall submit", 1)[0]
                     return json.loads(body)
     raise AssertionError("no final numbers in the conversation")
+
+
+REVIEWER_MODEL = "meta-models/Muse-Spark-Open-816B-A42B"  # the model name in the recorded requests
+
+
+def recorded_clients(folder: Path):
+    """(meta, reviewer, runtime, store) on the recordings in `folder/cache`: live calls that are
+    saved when GHOSTLINE_RECORD is set (run with `uv run --env-file .env`), replay otherwise."""
+    import dataclasses
+
+    from fixtures.scenarios import NoNetwork
+
+    from ghostline.config import get_settings
+    from ghostline.llm import InMemorySpendStore, MetaClient, ReviewerClient, Runtime
+
+    store = InMemorySpendStore()
+    if RECORDING:
+        runtime = Runtime.create(
+            get_settings(), mode="record", cache_dir=folder / "cache", store=store
+        )
+        return MetaClient(runtime), ReviewerClient(runtime), runtime, store
+    settings = dataclasses.replace(
+        get_settings(),
+        model_api_key="",
+        reviewer_api_key="",
+        physicist_model="muse-wonder-1.0",
+        reviewer_model=REVIEWER_MODEL,
+    )
+    runtime = Runtime.create(settings, mode="replay", cache_dir=folder / "cache", store=store)
+    return (
+        MetaClient(runtime, sdk=NoNetwork()),
+        ReviewerClient(runtime, sdk=NoNetwork()),
+        runtime,
+        store,
+    )
+
+
+def pin_training_plot(monkeypatch, folder: Path) -> None:
+    """The first prompt carries a matplotlib PNG, and the request key hashes its bytes. Save the
+    plot when recording and serve the saved bytes on replay, so replay doesn't depend on the
+    machine's matplotlib output."""
+    import ghostline.agent.loop as loop
+
+    real, path = loop.training_plot, folder / "training_plot.png"
+
+    def pinned(inputs):
+        if RECORDING:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(real(inputs))
+        return path.read_bytes()
+
+    monkeypatch.setattr(loop, "training_plot", pinned)

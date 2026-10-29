@@ -1,0 +1,13 @@
+{
+ "wall_s": 33.5,
+ "cost_usd": 0.1473,
+ "wonder_calls": 4,
+ "models": [
+  "S0",
+  "S1",
+  "S2",
+  "S3"
+ ],
+ "favorite": "S0",
+ "winner": "S2"
+}
