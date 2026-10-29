@@ -125,6 +125,7 @@ class FitOutcome:
     nfev: int
     at_bound: dict[str, bool] = field(default_factory=dict)
     timed_out: bool = False
+    cov_forecast: np.ndarray | None = None
 
 
 class Problem:
@@ -157,8 +158,17 @@ class Problem:
         self.scale[self.scale <= 0] = 1.0
         self.zl = (lower - self.ref) / self.scale
         self.zu = (upper - self.ref) / self.scale
+        self.exact = self._closed_form_available()
         self.best_cost = np.inf
         self.best_z = np.zeros(len(self.names))
+
+    def _closed_form_available(self) -> bool:
+        probe_tau = self.tau[: min(self.tau.size, 4)]
+        try:
+            probe = self.model.closed_form(probe_tau, self.params(np.zeros(len(self.names))))
+        except Exception:
+            return False
+        return probe is not None
 
     def point(self, z: np.ndarray) -> dict[str, float]:
         return dict(zip(self.names, (self.ref + np.asarray(z) * self.scale).tolist(), strict=True))
@@ -202,6 +212,8 @@ def _starts(problem: Problem, n_starts: int, seed: int) -> list[np.ndarray]:
 
 
 def _solve(problem: Problem, z0: np.ndarray, max_nfev: int, diff_step: float = 1e-6):
+    # Closed forms can be fit to machine precision; ODE fits are limited by the integrator.
+    tol = 1e-13 if problem.exact else 1e-11
     return least_squares(
         problem.residuals,
         z0,
@@ -212,13 +224,13 @@ def _solve(problem: Problem, z0: np.ndarray, max_nfev: int, diff_step: float = 1
         x_scale="jac",
         diff_step=diff_step,
         max_nfev=max_nfev,
-        ftol=1e-9,
-        xtol=1e-9,
-        gtol=1e-9,
+        ftol=tol,
+        xtol=tol,
+        gtol=tol,
     )
 
 
-def _covariance(problem: Problem, z: np.ndarray) -> tuple[np.ndarray | None, float | None]:
+def _covariance(problem: Problem, z: np.ndarray):
     """Gauss-Newton covariance s^2 (J'J)^-1 in parameter units, with J by central differences.
 
     The Jacobian that least_squares returns is stale and, with a robust loss, reweighted, so it is
@@ -226,6 +238,7 @@ def _covariance(problem: Problem, z: np.ndarray) -> tuple[np.ndarray | None, flo
     the data cannot constrain from looking precise.
     """
     n = len(z)
+    none = (None, None, None)
     h = 1e-4
     jac = np.empty((problem.obs.size, n))
     for k in range(n):
@@ -234,21 +247,23 @@ def _covariance(problem: Problem, z: np.ndarray) -> tuple[np.ndarray | None, flo
         down[k] = max(z[k] - h, problem.zl[k])
         width = up[k] - down[k]
         if width <= 0:
-            return None, None
+            return none
         jac[:, k] = (problem.normalized(up).ravel() - problem.normalized(down).ravel()) / width
     jac = jac / problem.scale
     if not np.all(np.isfinite(jac)):
-        return None, None
+        return none
     resid = problem.normalized(z).ravel()
-    prior = 1.0 / (((problem.zu - problem.zl) / 4.0) / problem.scale) ** 2
+    prior = 1.0 / ((problem.zu - problem.zl) * problem.scale / 4.0) ** 2
     try:
         cov = np.linalg.inv(jac.T @ jac + np.diag(prior))
     except np.linalg.LinAlgError:
         cov = np.linalg.pinv(jac.T @ jac + np.diag(prior))
-    cov = cov * max(1.0, float(np.sum(resid**2)) / max(resid.size - n, 1))
+    inflate = max(1.0, float(np.sum(resid**2)) / max(resid.size - n, 1))
+    # For forecasts, directions the data cannot see do not move the prediction: no prior there.
+    forecast = np.linalg.pinv(jac.T @ jac, rcond=1e-10, hermitian=True) * inflate
     norms = np.linalg.norm(jac, axis=0)
     norms[norms == 0] = 1.0
-    return cov, float(np.linalg.cond(jac / norms))
+    return cov * inflate, float(np.linalg.cond(jac / norms)), forecast
 
 
 def fit(
@@ -282,7 +297,9 @@ def fit(
         return FitOutcome(
             values, problem.specs, None, None, problem.best_cost, False, 0, {}, timed_out
         )
-    cov, cond = _covariance(problem, best.x) if want_cov and not timed_out else (None, None)
+    cov, cond, cov_fc = (
+        _covariance(problem, best.x) if want_cov and not timed_out else (None, None, None)
+    )
     z = best.x
     span = problem.zu - problem.zl
     at_bound = {
@@ -299,6 +316,7 @@ def fit(
         nfev=int(best.nfev),
         at_bound=at_bound,
         timed_out=timed_out,
+        cov_forecast=cov_fc,
     )
 
 
@@ -497,11 +515,11 @@ def forecast_draws(
     The realized forecast error depends on one noisy training fit. Drawing parameters around the
     fit shows how much of a gap between models could be training noise rather than physics.
     """
-    if outcome.cov is None or not outcome.values:
+    if outcome.cov_forecast is None or not outcome.values:
         return None
     names = list(outcome.values)
     mean = np.array([outcome.values[k] for k in names])
-    w, v = np.linalg.eigh(0.5 * (outcome.cov + outcome.cov.T))
+    w, v = np.linalg.eigh(0.5 * (outcome.cov_forecast + outcome.cov_forecast.T))
     root = v * np.sqrt(np.clip(w, 0.0, None))
     lower = np.array([outcome.specs[k].lower for k in names])
     upper = np.array([outcome.specs[k].upper for k in names])
