@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Detected sheet outline and a 5 cm grid">
+  <rect width="960" height="540" fill="#0b1015"/>
+  <g stroke="#22d3ee" stroke-opacity="0.35" stroke-width="1.5">
+    <path d="M70 330 H196 M70 368 H196 M70 406 H196 M70 444 H196 M70 482 H196"/>
+    <path d="M70 330 V508 M100 330 V508 M130 330 V508 M160 330 V508 M190 330 V508"/>
+    <path d="M0 270 H960 M0 150 H960 M0 30 H960 M0 390 H960 M0 510 H960" stroke-opacity="0.12"/>
+    <path d="M120 0 V540 M240 0 V540 M360 0 V540 M480 0 V540 M600 0 V540 M720 0 V540 M840 0 V540" stroke-opacity="0.12"/>
+  </g>
+  <polygon points="70,330 196,330 196,508 70,508" fill="rgba(226,222,208,0.12)" stroke="#22d3ee" stroke-width="3"/>
+  <g fill="#22d3ee">
+    <circle cx="70" cy="330" r="5"/><circle cx="196" cy="330" r="5"/><circle cx="196" cy="508" r="5"/><circle cx="70" cy="508" r="5"/>
+  </g>
+  <text x="212" y="424" fill="#9aa9ba" font-family="system-ui, sans-serif" font-size="20">A4 sheet</text>
+  <text x="212" y="450" fill="#9aa9ba" font-family="system-ui, sans-serif" font-size="16">grid: 5 cm</text>
+</svg>

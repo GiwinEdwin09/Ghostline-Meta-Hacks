@@ -1,26 +1,137 @@
 @import "tailwindcss";
 
+/*
+ * Ghostline theme: a calm dark lab with one accent, the cyan of the ghost.
+ * Secondary text uses --color-muted (about 7.5:1 on the background); never use zinc-500
+ * for text that has to be read, it fails WCAG AA on this background.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --background: #07090c;
+  --foreground: #e7ecf2;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: #0e1319;
+  --color-surface-2: #151c25;
+  --color-line: #232d39;
+  --color-line-strong: #34414f;
+  --color-muted: #9aa9ba;
+  --color-ghost: #22d3ee;
+  --color-ghost-dim: #0e4a57;
+  --color-wonder: #38bdf8;
+  --color-spark: #a78bfa;
+  --color-harness: #34d399;
+  --color-sam: #fb923c;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--background);
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 4.5rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: clip;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ghost);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgb(34 211 238 / 0.3);
+}
+
+/* The mini markdown renderer and KaTeX output live inside these wrappers. */
+.prose-ghost p + p,
+.prose-ghost p + ul,
+.prose-ghost ul + p {
+  margin-top: 0.6rem;
+}
+.prose-ghost ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose-ghost code {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.85em;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+.prose-ghost strong {
+  color: #fff;
+  font-weight: 600;
+}
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+.katex {
+  font-size: 1.05em;
+}
+
+/* Horizontal scrollers hide their scrollbar but stay scrollable. */
+.scroll-hide {
+  scrollbar-width: none;
+}
+.scroll-hide::-webkit-scrollbar {
+  display: none;
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.7);
+  backdrop-filter: blur(2px);
+}
+
+@keyframes ghost-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-surface-2) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
