@@ -96,7 +96,7 @@ class FitJob(BaseModel):
     splits: list[float] = Field(default_factory=lambda: [0.65, 0.5, 0.8])
     primary_split: float = 0.65
     n_starts: int = 8
-    forecast_draws: int = 24
+    forecast_draws: int = 16
     bootstrap: BootstrapSpec = Field(default_factory=BootstrapSpec)
     perturbations: list[Perturbation] = Field(default_factory=list)
     simulate: SimulateSpec | None = None

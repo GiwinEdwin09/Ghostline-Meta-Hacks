@@ -441,6 +441,7 @@ def fit_split(
     warm: dict[str, float] | None = None,
     boot: list[dict[str, float]] | None = None,
     n_draws: int = 0,
+    diff_step: float = 1e-6,
 ) -> tuple[SplitFit, FitOutcome]:
     """Fit on the training part of `ds` (all of it when frac is None) and score the rest."""
     t0 = float(ds.t[0])
@@ -458,7 +459,7 @@ def fit_split(
     if warm:
         specs = warm_specs(specs, warm)
     problem = Problem(model, tr, constants, specs, fixed, t0, deadline)
-    outcome = fit(problem, n_starts=n_starts, seed=seed)
+    outcome = fit(problem, n_starts=n_starts, seed=seed, diff_step=diff_step)
     if outcome.timed_out:
         raise FitTimeout
 

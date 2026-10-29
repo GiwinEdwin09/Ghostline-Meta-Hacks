@@ -50,7 +50,7 @@ def test_select_result_has_heldout_scores_for_each_split():
         for s in model.splits:
             assert s.n_train + s.n_test == s.n_train + len(s.heldout_errors)
             assert s.heldout_rmse == pytest.approx(np.sqrt(np.mean(np.square(s.heldout_errors))))
-            assert len(s.heldout_draws) == 24 and len(s.heldout_draws[0]) == s.n_test
+            assert len(s.heldout_draws) == 16 and len(s.heldout_draws[0]) == s.n_test
             assert min(s.t_test) > 0
         assert model.full.split == 1.0 and model.aic is not None and model.bic is not None
     assert result.model("FF0").n_physical == 1 and result.model("FF1").n_physical == 2

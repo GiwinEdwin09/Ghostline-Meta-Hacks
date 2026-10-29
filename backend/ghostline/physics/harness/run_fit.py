@@ -20,11 +20,13 @@ import concurrent.futures
 import multiprocessing
 import platform
 import time
+from contextlib import nullcontext
 
 import numpy as np
 import scipy
 
-from ..library.base import ModelDef
+from ..library import get_model
+from ..library.base import ModelDef, ode_tolerance
 from . import fitting
 from .custom import build_model, dry_run, spec_issues
 from .fitting import Dataset, FitTimeout
@@ -109,20 +111,27 @@ def _select(model, ds, constants, fixed, job, deadline, result, workdir):
     warm = None
     primary_params = primary_mask = primary_t = None
     for frac in order:
-        split_fit, outcome = fitting.fit_split(
-            model, ds, constants, fixed, frac,
-            n_starts=job.n_starts if warm is None else 1,
-            seed=job.bootstrap.seed, deadline=deadline, warm=warm, n_draws=job.forecast_draws,
-        )  # fmt: skip
+        first = warm is None
+        # The primary split gets the full ODE precision; the robustness splits are warm-started
+        # refits and the integrator can be looser there.
+        with nullcontext() if first else ode_tolerance(*fitting.REFIT_TOL):
+            split_fit, outcome = fitting.fit_split(
+                model, ds, constants, fixed, frac,
+                n_starts=job.n_starts if first else 1,
+                seed=job.bootstrap.seed, deadline=deadline, warm=warm, n_draws=job.forecast_draws,
+                diff_step=1e-6 if first else fitting.REFIT_DIFF_STEP,
+            )  # fmt: skip
         result.splits.append(split_fit)
         if warm is None:
             primary_params = {**constants, **fixed, **outcome.values}
             primary_mask, _, primary_t = fitting.split_masks(model, ds, frac)
         warm = outcome.values
-    full, outcome = fitting.fit_split(
-        model, ds, constants, fixed, None,
-        n_starts=1, seed=job.bootstrap.seed, deadline=deadline, warm=warm,
-    )  # fmt: skip
+    with ode_tolerance(*fitting.REFIT_TOL):
+        full, outcome = fitting.fit_split(
+            model, ds, constants, fixed, None,
+            n_starts=1, seed=job.bootstrap.seed, deadline=deadline, warm=warm,
+            diff_step=fitting.REFIT_DIFF_STEP,
+        )  # fmt: skip
     if job.bootstrap.n > 0:
         _bootstrap(model, ds, constants, fixed, outcome, full, job, deadline, result)
     result.full = full
@@ -156,6 +165,15 @@ def _final(model, ds, constants, fixed, job, deadline, result, workdir):
         result.plots = render_plots(
             model, ds, p, float(ds.t[-1]), mask, workdir / "plots" / model.id, include_heldout=False
         )
+
+
+def _parameter_count(spec: ModelSpec) -> int:
+    if spec.params is not None:
+        return len(spec.params)
+    try:
+        return len(get_model(spec.library_ref or "").params)
+    except KeyError:
+        return 0
 
 
 def _model_task(job_json: str, index: int, workdir: str) -> str:
@@ -219,8 +237,12 @@ def run_job(job: FitJob, workdir: Path) -> FitResult:
         if job.workers > 1 and len(job.models) > 1:
             ctx = multiprocessing.get_context("fork" if sys.platform != "win32" else "spawn")
             with concurrent.futures.ProcessPoolExecutor(job.workers, mp_context=ctx) as pool:
-                futures = [pool.submit(_model_task, payload, i, str(workdir)) for i in indices]
-                result.models = [ModelResult.model_validate_json(f.result()) for f in futures]
+                # Start the models with the most parameters first so the pool finishes together.
+                by_cost = sorted(indices, key=lambda i: -_parameter_count(job.models[i]))
+                futures = {i: pool.submit(_model_task, payload, i, str(workdir)) for i in by_cost}
+                result.models = [
+                    ModelResult.model_validate_json(futures[i].result()) for i in indices
+                ]
         else:
             result.models = [run_model(job, i, workdir) for i in indices]
     result.elapsed_s = time.monotonic() - started
