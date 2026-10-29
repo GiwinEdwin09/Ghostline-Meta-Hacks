@@ -263,6 +263,23 @@ def test_the_sheet_result_is_written_next_to_the_tracks(recorded, clip, tmp_path
     assert (tmp_path / "trial" / "median.png").exists()
 
 
+def test_a_frame_stands_in_when_sam_finds_no_sheet_in_the_median_image(recorded, clip):
+    """SAM is not deterministic and a small sheet is near its threshold: the median can come back
+    empty while a plain frame works (seen on a synthetic clip)."""
+    empty = SamResult(events=[], output_text="", usage={}, frames_processed=0, cost_usd=0.0025)
+
+    class MedianBlind(FakeMeta):
+        def sam_image(self, image, prompt, **kwargs):
+            super().sam_image(image, prompt, **kwargs)
+            return empty if len(self.image_calls) == 1 else self.sheet
+
+    sheet = segment_sheet(MedianBlind({}, sheet=recorded["sheet"]), clip)
+
+    assert sheet.median.frame == 0 and sheet.median.area > 0  # the largest of the probes
+    assert [m.frame for m in sheet.probes] == [0, 10, 19]
+    assert sheet.median_bgr.shape == (480, 854, 3)  # the median image is still the median
+
+
 def test_no_sheet_found_is_a_clear_failure(clip):
     empty = SamResult(events=[], output_text="", usage={}, frames_processed=0, cost_usd=0.0025)
 

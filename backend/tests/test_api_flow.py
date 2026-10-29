@@ -30,7 +30,7 @@ def upload_clip(client, exp_id, role="fit", size=2600):
     return done.json()
 
 
-def test_the_full_flow(inline_client, paths):
+def test_the_full_flow(inline_client, paths, repo):
     client = inline_client
 
     # create
@@ -51,8 +51,8 @@ def test_the_full_flow(inline_client, paths):
     assert state["status"] == "ready"
     [trial] = state["trials"]
     assert trial["id"] == first["trial_id"] and trial["status"] == "ready"
-    assert trial["n_frames"] == 600 and trial["trim"]["source"] == "auto"
-    assert {"original", "master", "poster"} <= set(trial["paths"])
+    assert trial["n_frames"] == 600 and trial["trim"]["suggested_start_s"] == 0.5
+    assert trial["media"]["poster_url"] == f"{eid}/{trial['media']['poster_url'].split('/', 1)[1]}"
 
     # trim
     trimmed = client.post(f"/api/trials/{trial['id']}/trim", json={"start_s": 1.0, "end_s": 8.0})
@@ -62,14 +62,19 @@ def test_the_full_flow(inline_client, paths):
     job = client.post(f"/api/experiments/{eid}/analyze").json()
     assert job["status"] == "succeeded" and job["progress"] == 1.0
     state = client.get(f"/api/experiments/{eid}").json()
-    assert state["status"] == "complete" and state["active_job"] is None
+    assert state["status"] == "complete" and state["job"]["status"] == "succeeded"
     assert state["scene"]["system_type"] == "pendulum"
-    assert state["winner_model_id"] == "P1" and state["confidence"] == "high"
+    assert state["winner_name"] == "Nonlinear pendulum" and state["confidence"] == "high"
+    assert state["headline"] == "g = 9.8 ± 0.2 m/s^2"
     assert state["conclusion"]["quantities"][0]["name"] == "g"
     assert state["review_status"] == "accepted"
     assert {m["id"] for m in state["models"]} == {"P0", "P1"}
-    assert len(state["fits"]) == 1 and len(state["reviews"]) == 1
-    assert state["tracks"][0]["object_key"] == "bob" and state["trajectories"]
+    by_id = {m["id"]: m for m in state["models"]}
+    assert by_id["P1"]["fit"]["heldout_rmse"] == 0.002
+    assert by_id["P0"]["fit"] is None
+    assert len(state["review"]["rounds"]) == 1 and state["review"]["status"] == "accepted"
+    assert state["trials"][0]["status"] == "tracked"
+    assert state["trials"][0]["media"]["trajectory_url"].startswith("api/experiments/")
     assert state["cost_usd"] == 0  # the passcode holder sees costs
 
     # the notebook tells the story, in order
@@ -89,7 +94,7 @@ def test_the_full_flow(inline_client, paths):
     [ghost] = state["ghosts"]
     assert ghost["version"] == 1 and ghost["divergence_onset_s"] == 2.8
     assert state["status"] == "complete"
-    video = client.get(f"/api/media/{eid}/{ghost['video_path']}", headers={"Range": "bytes=0-4"})
+    video = client.get(f"/api/media/{ghost['video_url']}", headers={"Range": "bytes=0-4"})
     assert video.status_code == 206 and video.content == b"ghost"
 
     # revise
@@ -100,13 +105,15 @@ def test_the_full_flow(inline_client, paths):
     assert any(e["kind"] == "revision" for e in later["events"])
 
     # simulate
-    sim = client.post(f"/api/experiments/{eid}/simulate", json={"model_id": "P1", "t_end_s": 5})
-    assert sim.status_code == 200
+    sim = client.post(f"/api/experiments/{eid}/simulate", json={"model_id": "P1", "t_end": 5})
+    assert sim.status_code == 200 and sim.json()["observables"] == [[0.1, -0.1]]
+    assert client.post(f"/api/experiments/{eid}/simulate", json={}).status_code == 200  # the winner
     assert sim.json() == {
         "model_id": "P1",
         "t": [0.0, 1.0],
         "series": {"theta": [0.1, -0.1]},
         "derived": {},
+        "observables": [[0.1, -0.1]],
     }
 
     # export, and the check
@@ -119,15 +126,15 @@ def test_the_full_flow(inline_client, paths):
     assert "attachment" in snippet.headers["content-disposition"]
     check = client.post(f"/api/experiments/{eid}/export/verify").json()
     assert check["status"] == "succeeded"
-    assert client.get(f"/api/experiments/{eid}").json()["replay_check"]["passed"] is True
+    assert repo.get_experiment(eid).replay_check["passed"] is True
 
     # re-run one fit
     rerun = client.post(f"/api/experiments/{eid}/models/P1/rerun", json={"split_pct": 0.5}).json()
     assert rerun["status"] == "succeeded"
-    assert len(client.get(f"/api/experiments/{eid}").json()["fits"]) == 2
+    assert len(repo.list_fits(eid)) == 2
 
     # every job is on record
-    kinds = [j["kind"] for j in client.get(f"/api/experiments/{eid}").json()["jobs"]]
+    kinds = [j.kind for j in repo.list_jobs(eid)]
     assert sorted(kinds) == sorted(
         [
             "ingest_trial",
@@ -166,7 +173,7 @@ def test_a_stage_failure_reaches_the_user_with_a_retry_that_works(inline_client,
     assert failed["status"] == "failed" and "SAM returned nothing" in failed["error"]
     state = client.get(f"/api/experiments/{eid}").json()
     assert state["status"] == "failed" and "SAM returned nothing" in state["error"]
-    assert state["active_job"] is None
+    assert state["job"]["status"] == "failed"
 
     fake_stages.fail_on.clear()
     retried = client.post(f"/api/jobs/{failed['id']}/retry").json()
@@ -216,14 +223,16 @@ def unwired_client(make_client, repo, paths, settings):
     return make_client(InlineSpawner(run))
 
 
-def test_jobs_report_that_the_stages_are_not_wired_yet(unwired_client):
+def test_an_upload_that_is_not_a_video_fails_ingest_for_good(unwired_client, paths):
     eid = unwired_client.post("/api/experiments", json={"title": "x"}).json()["id"]
 
     upload = upload_clip(unwired_client, eid)
 
     assert upload["job"]["status"] == "failed"
-    assert upload["job"]["error_code"] == "not_implemented"
-    assert "wired in wave 2" in upload["job"]["error"]
+    assert upload["job"]["error_code"] == "not_a_video" and upload["job"]["retryable"] is False
+    assert "video" in upload["job"]["error"]
+    # nothing a stranger sent is kept
+    assert not list(paths.experiment_dir(eid).glob("trials/*/original.*"))
 
 
 def test_export_and_simulate_say_501_until_they_are_wired(unwired_client, repo):
@@ -262,9 +271,9 @@ def test_simulate_checks_the_model_and_times_out(make_client, spawner, repo, fak
     url = f"/api/experiments/{eid}/simulate"
 
     assert client.post(url, json={"model_id": "nope"}).status_code == 404
-    assert client.post(url, json={"model_id": "W1", "t_end_s": 0}).status_code == 422
-    assert client.post(url, json={"model_id": "W1", "t_end_s": 500}).status_code == 422
-    assert client.post(url, json={"model_id": "W1", "n_points": 1}).status_code == 422
+    assert client.post(url, json={"model_id": "W1", "t_end": 0}).status_code == 422
+    assert client.post(url, json={"model_id": "W1", "t_end": 500}).status_code == 422
+    assert client.post(url, json={"model_id": "W1", "dt": 0}).status_code == 422
     assert client.post(url, json={"model_id": "W1"}).status_code == 200
 
     fake_stages.simulate_delay_s = 0.5

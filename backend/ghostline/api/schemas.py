@@ -4,29 +4,19 @@ Job, Event, ...) are defined in ghostline.store.records and Appendix C shapes in
 ghostline.store.core_schemas."""
 
 import re
-from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from ghostline.store.core_schemas import Quantity
+from ghostline.api.views import EventView, ViewStatus
+from ghostline.jobs.stage_types import SimulateResult
 from ghostline.store.records import (
-    BenchmarkRecord,
     DeclaredCapture,
-    Event,
-    Experiment,
     ExperimentStatus,
-    FitRecord,
-    GhostRender,
     Job,
-    ModelRecord,
-    ReviewRecord,
     Setup,
     SystemHint,
-    TrackRecord,
-    TrajectoryRecord,
-    Trial,
     TrialRole,
     Upload,
 )
@@ -79,27 +69,13 @@ class ExperimentPatch(BaseModel):
         return value
 
 
-class ExperimentState(Experiment):
-    """GET /experiments/{id}: everything the workspace page shows. cost_usd needs the passcode."""
-
-    trials: list[Trial]
-    tracks: list[TrackRecord]
-    trajectories: list[TrajectoryRecord]
-    models: list[ModelRecord]
-    fits: list[FitRecord]
-    reviews: list[ReviewRecord]
-    ghosts: list[GhostRender]
-    jobs: list[Job]
-    active_job: Job | None = None
-
-
-class EventsPage(BaseModel):
+class EventsView(BaseModel):
     """GET /experiments/{id}/events: new notebook events plus enough state to drive the stepper
     from one poll."""
 
-    events: list[Event]
+    events: list[EventView]
     last_seq: int
-    status: ExperimentStatus
+    status: ViewStatus
     job: Job | None = None  # the active job, else the most recent one
 
 
@@ -185,18 +161,6 @@ class RerunRequest(BaseModel):
     initial_guesses: dict[str, float] = Field(default_factory=dict, max_length=50)
 
 
-# --- benchmark -----------------------------------------------------------------------------
-class BenchmarkRow(BenchmarkRecord):
-    title: str
-    status: ExperimentStatus
-    confidence: Literal["high", "medium", "low"] | None = None
-    measured: Quantity | None = None  # the experiment's result for this quantity, if it has one
-
-
-class BenchmarkTable(BaseModel):
-    rows: list[BenchmarkRow]
-
-
 # --- misc ----------------------------------------------------------------------------------
 class AuthCheck(BaseModel):
     ok: Literal[True] = True
@@ -208,21 +172,49 @@ class DeleteResult(BaseModel):
     meta_files_failed: int
 
 
+class AdminBudget(BaseModel):
+    daily_usd: float
+    spent_today_usd: float
+    per_experiment_usd: float
+
+
+class AdminCache(BaseModel):
+    hit_rate: float  # of today's model calls, the share answered from the cache
+    calls_24h: int
+
+
+class AdminJob(Job):
+    experiment_title: str
+
+
 class AdminExperiment(BaseModel):
     id: UUID
     title: str
-    status: ExperimentStatus
-    created_at: datetime
     cost_usd: float
+    status: ExperimentStatus
+    llm_mode: str
 
 
 class AdminOverview(BaseModel):
     """GET /admin/overview: what the /admin page shows."""
 
-    spent_today_usd: float
-    budget_daily_usd: float
-    budget_per_experiment_usd: float
-    llm_calls_today: int
-    llm_cache_hits_today: int
-    recent_jobs: list[Job]
-    experiments_by_cost: list[AdminExperiment]
+    budget: AdminBudget
+    cache: AdminCache
+    jobs: list[AdminJob]
+    experiments: list[AdminExperiment]
+
+
+# --- simulate -----------------------------------------------------------------------------
+class SimulateBody(BaseModel):
+    """POST /experiments/{id}/simulate. `model_id` defaults to the winner; `initial` overrides
+    initial-condition parameters and `params` the rest, both by parameter name."""
+
+    model_id: str | None = None
+    params: dict[str, float] = Field(default_factory=dict, max_length=50)
+    initial: dict[str, float] = Field(default_factory=dict, max_length=50)
+    t_end: float = Field(default=10.0, gt=0, le=120, description="Seconds to simulate")
+    dt: float = Field(default=1 / 60, gt=0, description="Output spacing, seconds")
+
+
+class SimulateResponse(SimulateResult):
+    observables: list[list[float]]  # the series in observable order, for the chart

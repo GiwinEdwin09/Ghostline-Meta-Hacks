@@ -27,7 +27,7 @@ from .frames import (
     video_size,
 )
 from .masks import decode_mask, mask_features, place_mask
-from .parse import SamStreamError, frame_size_of, parse_sam_output
+from .parse import SamStreamError, frame_size_of, output_text_of, parse_sam_output
 from .tracks import Track, select_primary, stitch_tracks, tracks_from_result
 
 log = logging.getLogger("ghostline.vision")
@@ -99,6 +99,25 @@ def _tracks_from(
         log.warning("SAM output had %d malformed lines, first: %s", len(errors), errors[0].message)
     tracks = stitch_tracks(tracks_from_result(parsed, size))
     return [t for t in tracks if len(t) >= min_frames], size
+
+
+def track_from_events(
+    events: list[dict],
+    *,
+    key: str,
+    frame_size: tuple[int, int] | None = None,
+    min_frames: int = MIN_TRACK_FRAMES,
+) -> Track | None:
+    """The primary track in a saved SAM event stream, offline: what a retry reads instead of
+    paying for the same request again. None when the stream holds no usable track."""
+    text, status = output_text_of(events)
+    size = frame_size or frame_size_of(text)
+    if size is None:
+        return None
+    parsed = parse_sam_output(text, status, "video")
+    tracks = stitch_tracks(tracks_from_result(parsed, size))
+    chosen = select_primary([t for t in tracks if len(t) >= min_frames], min_frames)
+    return chosen.renamed(key) if chosen is not None else None
 
 
 def track_object(
@@ -300,7 +319,12 @@ def segment_sheet(
     """Segment the calibration sheet. The sheet doesn't move, so it comes from one still: the
     median of 15 frames spread across the clip, which removes the moving object. The first,
     middle and last frames are segmented too, to detect camera motion. Four image requests,
-    under $0.01. Masks stay lossless: corner precision matters."""
+    under $0.01. Masks stay lossless: corner precision matters.
+
+    SAM is not deterministic, and a small sheet sits near its detection threshold, so the median
+    can come back empty while a plain frame works. Then the largest sheet found in the first,
+    middle or last frame stands in for it (the object covers a little of it at most). It fails
+    only when none of the four requests finds the sheet."""
     n_frames = n_frames or count_frames(video_path)
     size = video_size(video_path)
     median = median_frame(video_path, median_count, n_frames)
@@ -323,15 +347,18 @@ def segment_sheet(
             phase="sheet",
         )
         sam_results.append(sam)
-        mask = _largest_sheet(sam, size, frame)
-        if mask is None and frame is None:
-            raise TrackingFailed("calibration sheet", [f"prompt '{prompt}': nothing found"])
-        found.append(mask)
+        found.append(_largest_sheet(sam, size, frame))
+    probes = [m for m in found[1:] if m is not None]
+    chosen = found[0] or max(probes, key=lambda m: m.area, default=None)
+    if chosen is None:
+        raise TrackingFailed("calibration sheet", [f"prompt '{prompt}': nothing found"])
+    if found[0] is None:
+        log.warning("SAM found no sheet in the median image; using frame %s", chosen.frame)
     cost = sum(0 if s.cache_hit else s.cost_usd for s in sam_results)
     return SheetResult(
-        median=found[0],
+        median=chosen,
         median_bgr=median,
-        probes=[m for m in found[1:] if m is not None],
+        probes=probes,
         frame_size=size,
         cost_usd=cost,
         sam=sam_results,
@@ -348,5 +375,6 @@ __all__ = [
     "TrackingFailed",
     "box_prompt",
     "segment_sheet",
+    "track_from_events",
     "track_object",
 ]

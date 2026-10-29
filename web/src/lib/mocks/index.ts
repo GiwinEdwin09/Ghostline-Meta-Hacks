@@ -135,7 +135,7 @@ async function viewDraft(d: Draft): Promise<DraftView> {
   if (!d.uploadedAt) return { experiment: exp, events: [] };
   const sinceUpload = (now - d.uploadedAt) / 1000;
   if (sinceUpload < INGEST_SECONDS) {
-    exp.status = "processing";
+    exp.status = "ingesting";
     exp.trials = [draftTrial(d, spin.experiment.trials[0], false)];
     exp.job = job(d.id, "ingest_trial", "running", "normalize", sinceUpload / INGEST_SECONDS, d.uploadedAt);
     return { experiment: exp, events: [] };
@@ -162,7 +162,7 @@ async function viewDraft(d: Draft): Promise<DraftView> {
   }
   const shown = all.slice(0, Math.max(1, Math.floor(progress * all.length)));
   const phaseIndex = Math.min(PIPELINE_PHASES.length - 1, Math.floor(progress * PIPELINE_PHASES.length));
-  exp.status = "running";
+  exp.status = "analyzing";
   exp.job = job(d.id, "analyze_experiment", "running", PIPELINE_PHASES[phaseIndex], progress, d.analyzeAt);
   exp.last_seq = shown.length;
   return { experiment: exp, events: shown };
@@ -178,13 +178,21 @@ function job(
 ): Job {
   return {
     id: `job-${expId}-${kind}`,
+    experiment_id: expId,
     kind,
     status,
-    phase,
+    phase: phase as Job["phase"],
     progress,
+    params: {},
+    attempt: 1,
+    retry_of: null,
+    created_at: new Date(startedAt).toISOString(),
     started_at: new Date(startedAt).toISOString(),
     heartbeat_at: new Date().toISOString(),
+    finished_at: null,
     error: null,
+    error_code: null,
+    retryable: true,
   };
 }
 
@@ -283,7 +291,7 @@ const uploads = new Map<string, { experimentId: string; role: "fit" | "prove" }>
 
 export const mockBackend: ApiBackend = {
   async health() {
-    return { status: "ok", version: "mock", llm_mode: "replay" };
+    return { status: "ok", version: "mock", llm_mode: "replay", database: "ok", volume: "ok", meta_api: "skipped" };
   },
 
   async listExamples() {
@@ -363,13 +371,8 @@ export const mockBackend: ApiBackend = {
   async rerunModel(experimentId, modelId, req) {
     await delay(300);
     return {
+      ...job(experimentId, "rerun", "succeeded", "fitting", 1, Date.now()),
       id: `job-rerun-${experimentId}-${modelId}`,
-      kind: "rerun",
-      status: "succeeded",
-      phase: "fit",
-      progress: 1,
-      started_at: new Date().toISOString(),
-      heartbeat_at: new Date().toISOString(),
       error: req.split_pct < 20 ? "Split too small" : null,
     };
   },
@@ -380,13 +383,14 @@ export const mockBackend: ApiBackend = {
     const w = b?.experiment.whatif;
     const model = w ? getModel(w.model_ref) : undefined;
     if (!w || !model) throw new ApiError("Nothing to simulate for this experiment.", 404);
-    const res = integrate(model, req.params, req.initial, { tEnd: req.t_end, dt: req.dt });
-    return { t: res.t, observables: res.obs };
+    const res = integrate(model, req.params ?? {}, req.initial ?? {}, { tEnd: req.t_end, dt: req.dt });
+    return { model_id: w.model_ref, t: res.t, series: {}, derived: {}, observables: res.obs };
   },
 
   async explain(_id, req) {
     await delay(1200);
     return {
+      cached: false,
       text: `${req.summary} The numbers above come from the same equation you measured, so the change you made follows directly from the physics rather than from a new fit.`,
     };
   },

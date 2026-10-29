@@ -402,8 +402,8 @@ def test_a_worker_that_goes_quiet_is_failed_on_the_next_poll_and_can_be_retried(
 
     assert retry.status_code == 202 and retry.json()["status"] == "queued"
     state = client.get(f"/api/experiments/{exp}").json()
-    assert state["active_job"]["id"] == retry.json()["id"]
-    assert [j["status"] for j in state["jobs"]] == ["queued", "failed"]
+    assert state["job"]["id"] == retry.json()["id"]
+    assert [j.status for j in repo.list_jobs(exp)] == ["queued", "failed"]
 
 
 def test_a_job_nobody_picked_up_is_failed_too(client, repo, db):
@@ -416,8 +416,8 @@ def test_a_job_nobody_picked_up_is_failed_too(client, repo, db):
 
     state = client.get(f"/api/experiments/{exp}").json()
 
-    assert state["active_job"] is None
-    assert state["jobs"][0]["error_code"] == "queue_timeout"
+    assert state["job"]["status"] == "failed"
+    assert state["job"]["error_code"] == "queue_timeout"
 
 
 def test_polling_a_healthy_job_leaves_it_alone(client, repo):
@@ -428,4 +428,4 @@ def test_polling_a_healthy_job_leaves_it_alone(client, repo):
 
     state = client.get(f"/api/experiments/{exp}").json()
 
-    assert state["active_job"]["status"] == "running"
+    assert state["job"]["status"] == "running"

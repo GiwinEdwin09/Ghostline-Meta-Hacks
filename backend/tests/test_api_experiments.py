@@ -19,7 +19,7 @@ def test_create_returns_the_new_experiment_with_defaults(client):
     assert body["title"] == "Pendulum, 40 degrees"
     assert body["system_type"] == "pendulum"
     assert body["status"] == "draft"
-    assert body["visibility"] == "private" and body["is_example"] is False
+    assert body["is_example"] is False and body["cost_usd"] == 0
     assert body["declared_capture"] == {"mode": "normal", "fps": None}
     assert body["setup"] == {"plane_offset_cm": 2.0, "paper": "a4", "pendulum_length_cm": None}
 
@@ -72,7 +72,7 @@ def test_create_ignores_fields_the_client_should_not_set(client):
         client, is_example=True, visibility="public", status="complete", cost_usd=99
     ).json()
 
-    assert (body["is_example"], body["visibility"], body["status"]) == (False, "private", "draft")
+    assert (body["is_example"], body["status"]) == (False, "draft")
 
 
 # --- read -----------------------------------------------------------------------------------
@@ -98,9 +98,9 @@ def test_the_state_carries_everything_the_workspace_needs(client, repo):
     assert state["id"] == exp["id"]
     assert [t["id"] for t in state["trials"]] == [str(trial.id)]
     assert state["trials"][0]["trim"]["end_s"] == 4
-    for key in ("tracks", "trajectories", "models", "fits", "reviews", "ghosts", "jobs"):
+    for key in ("models", "ghosts", "quality_flags", "export_formats"):
         assert state[key] == []
-    assert state["active_job"] is None
+    assert state["job"] is None and state["whatif"] is None and state["review"] is None
     assert state["scene"] is None and state["conclusion"] is None
 
 
@@ -181,7 +181,7 @@ def test_gallery_is_public_and_lists_only_published_examples(client, anon):
     assert listed.status_code == 200
     assert [e["id"] for e in listed.json()] == [example["id"]]
     assert private["id"] not in listed.text
-    assert listed.json()[0]["visibility"] == "public"
+    assert listed.json()[0]["is_example"] is True
 
 
 def test_listing_everything_needs_the_passcode(client, anon):
@@ -191,15 +191,14 @@ def test_listing_everything_needs_the_passcode(client, anon):
     assert len(client.get("/api/experiments").json()) == 1
 
 
-def test_listing_hides_costs_from_the_public(client, anon, repo):
+def test_the_gallery_never_carries_costs(client, anon, repo):
     exp = create(client).json()
     client.patch(f"/api/experiments/{exp['id']}", json={"is_example": True})
     repo.add_spend(amount_usd=1.0, provider="meta", experiment_id=exp["id"])
 
     public = anon.get("/api/experiments", params={"examples": "true"}).json()[0]
-    admin = client.get("/api/experiments").json()[0]
 
-    assert public["cost_usd"] is None and admin["cost_usd"] == 1.0
+    assert "cost_usd" not in public
 
 
 def test_listing_pages(client):
@@ -213,19 +212,19 @@ def test_listing_pages(client):
     assert [e["title"] for e in rest] == ["e0"]
 
 
-def test_patch_renames_and_unpublishes(client):
+def test_patch_renames_and_unpublishes(client, repo):
     exp = create(client).json()
 
     published = client.patch(
         f"/api/experiments/{exp['id']}", json={"is_example": True, "title": "Nice"}
     )
-    assert published.json()["is_example"] and published.json()["visibility"] == "public"
+    assert published.json()["is_example"] and repo.get_visibility(exp["id"]) == "public"
     assert published.json()["title"] == "Nice"
 
     hidden = client.patch(
         f"/api/experiments/{exp['id']}", json={"is_example": False, "visibility": "private"}
     )
-    assert hidden.json()["visibility"] == "private" and hidden.json()["is_example"] is False
+    assert repo.get_visibility(exp["id"]) == "private" and hidden.json()["is_example"] is False
     assert client.patch(f"/api/experiments/{exp['id']}", json={}).status_code == 200
     assert client.patch(f"/api/experiments/{exp['id']}", json={"title": " "}).status_code == 422
 
@@ -325,11 +324,12 @@ def test_benchmark_table_joins_truth_with_the_measured_result(client, anon, repo
 
     table = anon.get("/api/benchmark").json()["rows"]
 
-    assert [r["title"] for r in table] == ["Drop 1", "Drop 2"]
+    assert [r["experiment_id"] for r in table] == [exp["id"], other["id"]]
     first = table[0]
-    assert first["truth_value"] == 9.8 and first["measured"]["value"] == 9.75
-    assert first["confidence"] == "high" and first["status"] == "complete"
-    assert table[1]["measured"] is None
+    assert first["truth"] == 9.8 and first["measured"] == 9.75
+    assert first["covered"] is True and first["confidence"] == "high"
+    assert abs(first["z"]) < 1
+    assert table[1]["measured"] is None and table[1]["covered"] is None
 
 
 def test_benchmark_entry_validation_and_overwrite(client, repo):
@@ -347,7 +347,7 @@ def test_benchmark_entry_validation_and_overwrite(client, repo):
     again = client.put(url, json={"system": "free_fall", "quantity": "g", "truth_value": 9.7})
 
     assert again.json()["truth_value"] == 9.7
-    assert client.get(f"/api/experiments/{exp['id']}").json()["is_benchmark"] is True
+    assert repo.get_experiment(exp["id"]).is_benchmark is True
     assert len(client.get("/api/benchmark").json()["rows"]) == 1
 
 
@@ -360,6 +360,7 @@ def test_admin_overview_needs_the_passcode_and_shows_spend_and_jobs(client, anon
 
     body = client.get("/api/admin/overview").json()
 
-    assert body["spent_today_usd"] == 2.5 and body["budget_daily_usd"] == 20
-    assert body["recent_jobs"][0]["id"] == str(job.id)
-    assert body["experiments_by_cost"][0]["cost_usd"] == 2.5
+    assert body["budget"]["spent_today_usd"] == 2.5 and body["budget"]["daily_usd"] == 20
+    assert body["jobs"][0]["id"] == str(job.id) and body["jobs"][0]["experiment_title"]
+    assert body["experiments"][0]["cost_usd"] == 2.5
+    assert body["experiments"][0]["llm_mode"] == "replay"

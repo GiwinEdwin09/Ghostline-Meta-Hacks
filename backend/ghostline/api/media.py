@@ -8,6 +8,7 @@ so is If-None-Match -> 304, which FileResponse leaves out.
 
 import mimetypes
 import os
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Request
@@ -28,6 +29,15 @@ mimetypes.add_type("application/octet-stream", ".parquet")
 mimetypes.add_type("application/octet-stream", ".npy")
 
 
+# What the browser never needs and the Volume holds anyway: the raw upload and the physicist's
+# private session (Wonder's history and the held-out errors it must not see, Part 13).
+_INTERNAL = re.compile(r"(^|/)(agent/|original\.[^/]*$)")
+
+
+def is_internal(path: str) -> bool:
+    return bool(_INTERNAL.search(path))
+
+
 def _not_found() -> ApiError:
     return ApiError(404, "media_not_found", "That file doesn't exist.")
 
@@ -41,8 +51,9 @@ def get_media(
     experiment_id: UUID, path: str, request: Request, services: ServicesDep, repo: RepoDep
 ) -> Response:
     """Serve a file from experiments/{exp}/{path}. Experiments are private by their unguessable
-    id, so anyone who has the id can read the media, and a missing experiment is a 404."""
-    if repo.get_visibility(experiment_id) is None:
+    id: whoever has it can read the media (a <video> tag can't send a passcode), an unknown id is
+    a 404, and so is a path that is internal (the raw upload, the physicist's session)."""
+    if repo.get_visibility(experiment_id) is None or is_internal(path):
         raise _not_found()
     try:
         target = services.paths.resolve_media(experiment_id, path)
