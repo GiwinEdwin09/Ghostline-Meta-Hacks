@@ -138,5 +138,8 @@ class Pendulum(ModelDef):
         c0, c1, _ = poly_start(tau, theta, 2, head=max(8, min(15, tau.size // 8)))
         specs["theta0"] = clip_spec(c0, -math.pi, math.pi, "rad", "initial_condition")
         specs["omega0"] = clip_spec(c1, -20.0, 20.0, "rad/s", "initial_condition")
-        specs["g"] = clip_spec(omega_small**2 * length, 1.0, 30.0, "m/s^2", "physical")
+        # The swing frequency fixes g to a few percent; a narrow box keeps the optimizer out of
+        # the neighbouring phase-slipped minima.
+        g0 = omega_small**2 * length
+        specs["g"] = clip_spec(g0, max(1.0, 0.5 * g0), min(30.0, 2.0 * g0), "m/s^2", "physical")
         return specs

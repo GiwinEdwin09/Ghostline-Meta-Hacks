@@ -211,7 +211,9 @@ def _starts(problem: Problem, n_starts: int, seed: int) -> list[np.ndarray]:
     return starts
 
 
-def _solve(problem: Problem, z0: np.ndarray, max_nfev: int, diff_step: float = 1e-6):
+def _solve(
+    problem: Problem, z0: np.ndarray, max_nfev: int, diff_step: float = 1e-6, loss: str = "soft_l1"
+):
     # Closed forms can be fit to machine precision; ODE fits are limited by the integrator.
     tol = 1e-13 if problem.exact else 1e-9
     return least_squares(
@@ -219,9 +221,9 @@ def _solve(problem: Problem, z0: np.ndarray, max_nfev: int, diff_step: float = 1
         z0,
         bounds=(problem.zl, problem.zu),
         method="trf",
-        loss="soft_l1",
+        loss=loss,
         f_scale=F_SCALE,
-        x_scale="jac",
+        x_scale=1.0,
         diff_step=diff_step,
         max_nfev=max_nfev,
         ftol=tol,
@@ -286,9 +288,12 @@ def fit(
         screened.sort(key=lambda item: float(np.sum(item[0] ** 2)))
         chosen = [starts[0]] + [z0 for _, z0 in screened[:1]]
         for i, z0 in enumerate(chosen):
-            res = _solve(problem, z0, max_nfev if i == 0 else max_nfev // 2, diff_step)
+            # Plain least squares first: a robust loss can write off the late, phase-shifted
+            # data and settle early. The robust fit then starts from the right basin.
+            res = _solve(problem, z0, max_nfev if i == 0 else max_nfev // 2, diff_step, "linear")
             if best is None or res.cost < best.cost:
                 best = res
+        best = _solve(problem, best.x, 60, diff_step, "soft_l1")
     except FitTimeout:
         timed_out = True
     if best is None:
