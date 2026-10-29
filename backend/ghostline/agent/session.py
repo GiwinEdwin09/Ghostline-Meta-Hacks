@@ -90,6 +90,7 @@ class Session(BaseModel):
 
     conclusion: Conclusion | None = None  # as returned by run_physicist
     assessment: ConfidenceAssessment | None = None
+    requested_confidence: Literal["high", "medium", "low"] = "high"  # what Wonder asked for
     review_status: str | None = None
 
     def entry(self, model_id: str) -> ModelEntry:

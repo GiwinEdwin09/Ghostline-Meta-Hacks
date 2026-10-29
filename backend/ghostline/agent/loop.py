@@ -141,6 +141,8 @@ class PhysicistLoop:
         self.conclusion: Conclusion | None = None
         self.turns = 0
         self.idle = 0
+        self.required_issues: list[str] = []
+        self.responses: list = []
         self.history = lab.session.history
 
     # --- model calls ------------------------------------------------------------------------
@@ -218,6 +220,7 @@ class PhysicistLoop:
             "ANALYZE": "Reply with your 2 to 4 sentence reading of the fits, or call a tool.",
             "REVISE": "Call run_fits for the new models.",
             "CONCLUDE": "Call submit_conclusion.",
+            "RESPOND": "Answer the reviewer's issues by calling submit_conclusion.",
         }.get(self.phase, "Use the tools.")
         self.history.append(user_message(f"Phase: {self.phase}. Use the tools. {hint}"))
 
@@ -313,15 +316,37 @@ class PhysicistLoop:
             return ToolOutput(
                 json.dumps({"submitted": False, "message": self._conclude_message()}), ok=False
             )
-        if self.phase != "CONCLUDE":
+        if self.phase not in ("CONCLUDE", "RESPOND"):
             return error(f"submit_conclusion is not available in the {self.phase} phase.")
-        problems = concl.check_conclusion(self.lab, args)
+        responding = self.phase == "RESPOND"
+        if responding:
+            try:
+                self.lab.ensure_final()  # a re-run may have changed the winner
+            except LabError as exc:
+                return error(str(exc))
+        problems = concl.check_conclusion(
+            self.lab, args, required_issue_ids=self.required_issues if responding else ()
+        )
         if problems:
             return ToolOutput(json.dumps({"submitted": False, "problems": problems}), ok=False)
         conclusion, assessment = concl.build_conclusion(self.lab, args, review=None)
-        concl.record_conclusion(self.lab, conclusion, assessment, actor="wonder")
+        self.lab.session.requested_confidence = args.confidence
+        self.responses = args.issue_responses
+        if not responding:
+            concl.record_conclusion(self.lab, conclusion, assessment, actor="wonder")
         self.conclusion = conclusion
         return ToolOutput(json.dumps({"submitted": True}), effect="conclusion")
+
+    # --- the review's respond round ---------------------------------------------------------
+    def respond(self, message: str, required_issue_ids: list[str]) -> Conclusion:
+        """Continue the conversation with the reviewer's issues as a new turn, tools enabled.
+        Returns the (re-validated) conclusion; `self.responses` holds the answer to each issue."""
+        self.phase = "RESPOND"
+        self.required_issues = required_issue_ids
+        self.conclusion, self.responses = None, []
+        self.used["RESPOND"], self.idle, self.turns = 0, 0, 0
+        self.history.append(user_message(message))
+        return self.run()
 
 
 def _with_guidance(out: ToolOutput, guidance: str) -> ToolOutput:
