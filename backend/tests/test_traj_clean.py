@@ -1,7 +1,14 @@
 import numpy as np
 import pandas as pd
+import pytest
 
-from ghostline.traj.clean import area_outliers, clean_track, jump_outliers
+from ghostline.traj.clean import (
+    area_outliers,
+    clean_track,
+    jump_outliers,
+    object_confidence_low,
+    typical_confidence,
+)
 from ghostline.traj.model import FLAG_BORDER, TrackSeries
 
 
@@ -36,6 +43,15 @@ def test_a_confidence_exactly_at_the_limit_is_kept():
     tr = line_track()
     tr.conf[5] = 0.5
     assert clean_track(tr)["drop"][5] == ""
+
+
+def test_a_uniformly_low_confidence_is_an_object_score_and_drops_nothing():
+    tr = line_track()
+    tr.conf[:] = 0.3
+    assert object_confidence_low(tr) and typical_confidence(tr) == pytest.approx(0.3)
+    assert (clean_track(tr)["drop"] == "").all()
+    tr.conf[:] = 0.95
+    assert not object_confidence_low(tr)
 
 
 def test_area_outliers_use_a_rolling_median():

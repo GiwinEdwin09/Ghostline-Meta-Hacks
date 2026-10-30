@@ -159,7 +159,22 @@ def test_there_is_a_stub_for_every_stage():
     }
 
 
-@pytest.mark.parametrize("name", STAGE_FUNCTIONS)
+# Wired stages: measurement (jobs/measure.py), the physicist and reviewer, and the ghost.
+WIRED = {
+    "ingest",
+    "analyze_scene",
+    "track_objects",
+    "calibrate",
+    "extract_trajectory",
+    "run_physicist",
+    "run_review",
+    "predict_ghost",
+    "diagnose_revision",
+    "rerun_model",
+}
+
+
+@pytest.mark.parametrize("name", [n for n in STAGE_FUNCTIONS if n not in WIRED])
 def test_stubs_raise_not_implemented_with_the_wave_2_message(name):
     fn = getattr(stages, name)
     args = [MagicMock() for _ in inspect.signature(fn).parameters]

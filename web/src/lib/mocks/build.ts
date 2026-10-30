@@ -149,7 +149,7 @@ function baseTrial(
     n: number;
     duration: number;
     fps: number;
-    declared: "normal" | "slowmo";
+    declared: "normal" | "slow_mo";
     declaredFps: number;
     video: string;
     poster: string;
@@ -793,12 +793,12 @@ function buildFreeFall(): MockBundle {
   const t = input.t;
   const y = input.y;
   const trial = baseTrial("fall-t1", "fit", sc.id, {
-    n: t.length, duration: 0.6, fps: 240, declared: "slowmo", declaredFps: 240,
+    n: t.length, duration: 0.6, fps: 240, declared: "slow_mo", declaredFps: 240,
     video: "drop-t1.mp4", poster: "drop-poster.jpg", mmPerPx: 2.86, sigma: 0.0035, offsetCm: 2.5,
     worldToPx: m, flags: NO_FLAGS, trajectory: true,
   });
   const trial2 = baseTrial("fall-t2", "prove", sc.id, {
-    n: t.length, duration: 0.6, fps: 240, declared: "slowmo", declaredFps: 240,
+    n: t.length, duration: 0.6, fps: 240, declared: "slow_mo", declaredFps: 240,
     video: "drop-ghost.mp4", poster: "drop-poster.jpg", mmPerPx: 2.86, sigma: 0.0035, offsetCm: 2.5,
     worldToPx: m, flags: NO_FLAGS, trajectory: false,
   });
@@ -839,7 +839,7 @@ function buildFreeFall(): MockBundle {
       "A 1.2 m drop at 240 fps. The simplest law wins, and says why it can't say more.", media("drop-poster.jpg"),
       `g = ${plusMinus(g, 3)}`),
     description: "A steel ball dropped 1.2 m beside a wall, filmed at 240 fps.",
-    declared_capture: { mode: "slowmo", fps: 240 },
+    declared_capture: { mode: "slow_mo", fps: 240 },
     setup: { plane_offset_cm: 2.5, paper: "a4", pendulum_length_cm: null },
     scene: sceneAnalysis("free_fall", "A steel ball is released from rest beside a wall with an A4 sheet on it, and falls about 1.2 m.",
       [{ key: "ball", sam_prompt: "steel ball", role: "moving_body", why: "The falling object." }],

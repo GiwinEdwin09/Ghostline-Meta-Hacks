@@ -1,9 +1,11 @@
-"""WAVE 2 WIRING POINT: every pipeline stage the jobs call lives here as a stub.
+"""Every pipeline stage the jobs call lives here.
 
 The job handlers (jobs/handlers.py) and two API routes (export and simulate) call only these
-functions. Each stub raises NotImplementedError until the owning module exists; wave 2 replaces
-the body with a call into it and keeps the signature, or changes the signature and the one place
-in handlers.py that calls it. Tests replace these with fakes (monkeypatch.setattr).
+functions. The five measurement stages (ingest, analyze_scene, track_objects, calibrate and
+extract_trajectory) are wired to their modules in jobs/measure.py. The rest are stubs that raise
+NotImplementedError until the owning module is merged and wired: replace the body with a call
+into it and keep the signature, or change the signature and the one place in handlers.py that
+calls it. Tests replace stages with fakes (monkeypatch.setattr).
 
 Rules for implementations:
 - Report with ctx.phase(...) and ctx.progress(...). Write notebook events with ctx.notebook.
@@ -17,6 +19,9 @@ Rules for implementations:
 
 from typing import Literal
 
+from ghostline.agent import stage as agent_stage
+from ghostline.ghost import stage as ghost_stage
+from ghostline.jobs import measure
 from ghostline.jobs.context import JobContext
 from ghostline.jobs.stage_types import (
     CalibrationResult,
@@ -29,6 +34,7 @@ from ghostline.jobs.stage_types import (
     TrackingResult,
     TrajectoryResult,
 )
+from ghostline.review import stage as review_stage
 from ghostline.store.core_schemas import Conclusion, SceneAnalysis, SimExport
 from ghostline.store.records import Experiment, FitRecord, GhostRender, ModelRecord, Trial
 from ghostline.store.repo import Repo
@@ -40,19 +46,20 @@ _WIRED_LATER = "wired in wave 2"
 def ingest(ctx: JobContext, trial: Trial) -> IngestResult:
     """Part 5 (ingest/): probe, timing model, master.mp4 and derived files, auto-trim, Meta Files
     upload. The original is already assembled at paths.original(...); trial.original_filename,
-    trial.sha256 and the experiment's declared capture are the inputs."""
-    raise NotImplementedError(_WIRED_LATER)
+    trial.sha256 and the experiment's declared capture are the inputs. Part 28's upload checks
+    (ffprobe, video streams only, frame limit) run first."""
+    return measure.ingest(ctx, trial)
 
 
 # --- analyze_experiment -------------------------------------------------------------------
 def analyze_scene(ctx: JobContext, experiment: Experiment, trial: Trial) -> SceneAnalysis:
     """Part 6 (scene/): Wonder watches wonder_480.mp4 and returns the SceneAnalysis."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.analyze_scene(ctx, experiment, trial)
 
 
 def track_objects(ctx: JobContext, trial: Trial, scene: SceneAnalysis) -> TrackingResult:
     """Part 7 (vision/): SAM 3.1 tracks every object in scene.tracked_objects plus the sheet."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.track_objects(ctx, trial, scene)
 
 
 def calibrate(
@@ -63,7 +70,7 @@ def calibrate(
     tracking: TrackingResult,
 ) -> CalibrationResult:
     """Part 8 (calib/): sheet corners, homography, plane-offset correction, gravity direction."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.calibrate(ctx, experiment, trial, scene, tracking)
 
 
 def extract_trajectory(
@@ -75,7 +82,7 @@ def extract_trajectory(
     calibration: CalibrationResult,
 ) -> TrajectoryResult:
     """Part 9 (traj/): clean physical time series, noise estimate, events, quality flags."""
-    raise NotImplementedError(_WIRED_LATER)
+    return measure.extract_trajectory(ctx, experiment, trial, scene, tracking, calibration)
 
 
 def run_physicist(
@@ -90,14 +97,14 @@ def run_physicist(
     or library-only mode. Calls ctx.phase('hypothesizing') and ctx.phase('fitting') itself and
     persists models and fits as they appear. The returned conclusion's confidence comes from
     confidence.py and its numbers from the harness."""
-    raise NotImplementedError(_WIRED_LATER)
+    return agent_stage.run_physicist(ctx, experiment, trial, scene, trajectory, calibration)
 
 
 def run_review(ctx: JobContext, experiment: Experiment, conclusion: Conclusion) -> ReviewOutcome:
     """Part 14 (review/): Spark Open challenges the claim, Wonder responds, up to two rounds.
     Persists reviews with ctx.repo.insert_review. If the reviewer endpoint is down, return
     review_status 'not_reviewed' with the conclusion unchanged."""
-    raise NotImplementedError(_WIRED_LATER)
+    return review_stage.run_review(ctx, experiment, conclusion)
 
 
 # --- prove_trial and revise ---------------------------------------------------------------
@@ -112,7 +119,7 @@ def predict_ghost(
     """Part 16 (ghost/): freeze trial 1's parameters, fit initial conditions on trial 2's launch
     window, predict the rest, render the ghost video and track json. Calls ctx.phase('predicting')
     then ctx.phase('rendering')."""
-    raise NotImplementedError(_WIRED_LATER)
+    return ghost_stage.predict_ghost(ctx, experiment, fit_trial, prove_trial, scene, trajectory)
 
 
 def diagnose_revision(
@@ -120,7 +127,7 @@ def diagnose_revision(
 ) -> RevisionResult:
     """Part 17 (ghost/, agent/): Wonder diagnoses the drift, a revised model is fitted on trial 1
     only, and ghost v2 is rendered when it forecasts better beyond noise."""
-    raise NotImplementedError(_WIRED_LATER)
+    return ghost_stage.diagnose_revision(ctx, experiment, ghost)
 
 
 # --- rerun and export_verify --------------------------------------------------------------
@@ -133,7 +140,7 @@ def rerun_model(
 ) -> FitRecord:
     """Parts 11-12 and 20: refit one model with an edited split and initial guesses. Returns the
     new FitRecord; the handler inserts it and writes the notebook event."""
-    raise NotImplementedError(_WIRED_LATER)
+    return agent_stage.rerun_model(ctx, experiment, model, split_pct, initial_guesses)
 
 
 def verify_export(ctx: JobContext, experiment: Experiment) -> dict:

@@ -3,6 +3,13 @@
 Frames are dropped for low confidence, a mask touching the frame border, a mask area far from its
 rolling median, or a centroid that jumps away from its neighbours. Every dropped frame stays a
 gap in the series.
+
+SAM's confidence `c` is one number per object (the smoke test saw the same value on every frame),
+so it can't tell good frames from bad ones. It is used per frame only to single out frames that
+are less confident than the rest of their track, which happens when stitching joins a weak
+re-detection onto a strong track. A track whose typical confidence is below the limit is a
+low-confidence object, and dropping all its frames would throw away the whole clip: those frames
+are kept, and `object_confidence_low` tells the caller to warn the user instead.
 """
 
 from __future__ import annotations
@@ -72,11 +79,23 @@ def jump_outliers(px: np.ndarray) -> np.ndarray:
     return out
 
 
+def typical_confidence(track: TrackSeries) -> float:
+    """The track's object-level confidence: the median over its frames (NaN if none is known)."""
+    known = track.conf[np.isfinite(track.conf)]
+    return float(np.median(known)) if len(known) else float("nan")
+
+
+def object_confidence_low(track: TrackSeries, min_conf: float = MIN_CONF) -> bool:
+    """True when the object as a whole scores below `min_conf`, so confidence can't be used to
+    pick frames (see the module docstring)."""
+    return bool(typical_confidence(track) < min_conf)
+
+
 def clean_track(track: TrackSeries, min_conf: float = MIN_CONF) -> pd.DataFrame:
     """One row per input frame with the reason it was dropped ('' if kept)."""
     n = len(track)
     drop = np.full(n, "", dtype=object)
-    low = track.conf < min_conf
+    low = (track.conf < min_conf) & (not object_confidence_low(track, min_conf))
     drop[low] = "low_conf"
     border = track.border & ~low
     drop[border] = "border"

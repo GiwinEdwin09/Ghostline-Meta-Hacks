@@ -171,7 +171,7 @@ function liveReducer(state: LiveState, action: LiveAction): LiveState {
 
 export function isJobActive(job: Job | null | undefined, status?: ExperimentStatus): boolean {
   if (job) return job.status === "queued" || job.status === "running";
-  return status === "running" || status === "processing";
+  return status === "analyzing" || status === "ingesting";
 }
 
 /**
@@ -214,7 +214,7 @@ export function useExperimentLive(id: string): LiveExperiment {
         const ev = await api.getEvents(id, lastSeq.current);
         if (!alive) return;
         for (const e of ev.events) lastSeq.current = Math.max(lastSeq.current, e.seq);
-        dispatch({ type: "events", id, events: ev.events, job: ev.job, status: ev.status });
+        dispatch({ type: "events", id, events: ev.events, job: ev.job ?? null, status: ev.status });
         if (!isJobActive(ev.job, ev.status)) {
           const experiment = await api.getExperiment(id);
           if (alive) dispatch({ type: "experiment", id, experiment });

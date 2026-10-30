@@ -24,6 +24,7 @@ from ghostline import __version__
 from ghostline.api import experiments, health, media, misc, uploads
 from ghostline.api.deps import FailureLimiter, Services
 from ghostline.api.errors import install_error_handlers
+from ghostline.api.views import GhostTrackView
 from ghostline.config import Settings, get_settings
 from ghostline.jobs.log import configure_logging
 from ghostline.jobs.runner import run_job
@@ -71,7 +72,7 @@ class BodyLimitMiddleware:
 
 # Appendix C shapes that no route returns directly (the API returns their stored forms), still
 # published in the OpenAPI document so the web app can generate types for them.
-_EXTRA_SCHEMAS = (Review, ReviewIssue, ModelProposal)
+_EXTRA_SCHEMAS = (Review, ReviewIssue, ModelProposal, GhostTrackView)
 
 
 def _publish_extra_schemas(app: FastAPI) -> None:

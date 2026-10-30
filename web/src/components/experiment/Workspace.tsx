@@ -169,9 +169,9 @@ function isEnabled(tab: TabId, exp: Experiment, complete: boolean): boolean {
 function StatusBadge({ exp }: { exp: Experiment }) {
   const label: Record<Experiment["status"], string> = {
     draft: "Draft",
-    processing: "Preparing the clip",
+    ingesting: "Preparing the clip",
     ready: "Ready to analyze",
-    running: "Analyzing",
+    analyzing: "Analyzing",
     complete: exp.is_example ? "Example" : "Complete",
     failed: "Failed",
     blocked: "Can't measure this",

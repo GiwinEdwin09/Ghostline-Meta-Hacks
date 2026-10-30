@@ -12,7 +12,490 @@ export interface paths {
             cookie?: never;
         };
         /** Health */
-        get: operations["health_api_health_get"];
+        get: operations["health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Experiments
+         * @description The gallery (`examples=true`) is public. Listing everything needs the passcode.
+         */
+        get: operations["list_experiments"];
+        put?: never;
+        /** Create Experiment */
+        post: operations["create_experiment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Experiment */
+        get: operations["get_experiment"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Experiment
+         * @description Remove the experiment's rows, its Volume folder and its Meta Files API uploads. Examples
+         *     and benchmark experiments are protected: unpublish them first.
+         */
+        delete: operations["delete_experiment"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch Experiment
+         * @description Rename, or publish as an example (an example is always public).
+         */
+        patch: operations["patch_experiment"];
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Events
+         * @description Poll this every second while a job runs. One response carries the new events, the
+         *     experiment status and the job's phase and progress.
+         */
+        get: operations["list_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/trials/{trial_id}/trajectory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trajectory
+         * @description The trial's trajectory as JSON, built from trajectory.parquet: metres, radians and
+         *     seconds, with the pixel trail, the training split and the events.
+         */
+        get: operations["get_trajectory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze
+         * @description Start the analysis of the newest ready clip. Asking again while it runs returns the same
+         *     job.
+         */
+        post: operations["analyze"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/prove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prove
+         * @description Run the ghost prediction on the second clip.
+         */
+        post: operations["prove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revise
+         * @description Diagnose where the ghost drifted and try a revised model.
+         */
+        post: operations["revise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/models/{model_id}/rerun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rerun Model
+         * @description Re-run one fit with an edited split and initial guesses (notebook Re-run button).
+         */
+        post: operations["rerun_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/export/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Export
+         * @description Spawn the PyBullet replay check (Part 19).
+         */
+        post: operations["verify_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate
+         * @description Simulate a model, including a Wonder-written one, in at most SIMULATE_TIMEOUT_S.
+         */
+        post: operations["simulate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explain
+         * @description Wonder's two or three sentences on a What-if result. Cached per question.
+         */
+        post: operations["explain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/{experiment_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export
+         * @description Simulator parameters as Ghostline JSON (`format=json`) or a PyBullet snippet.
+         */
+        get: operations["export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Upload */
+        post: operations["create_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Upload
+         * @description Which chunks the server has, for resuming after a reload.
+         */
+        get: operations["get_upload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads/{upload_id}/chunks/{n}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Chunk
+         * @description Store one raw chunk. Repeating a chunk replaces it, so retries are safe.
+         */
+        put: operations["put_chunk"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads/{upload_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Upload
+         * @description Assemble the chunks into original.<ext>, hash it, create the trial and start ingest.
+         *     Calling it again after success returns the same trial.
+         */
+        post: operations["complete_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trials/{trial_id}/trim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Trim
+         * @description Set the analysis window. Anything left out keeps the auto-suggested value.
+         */
+        post: operations["set_trim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{experiment_id}/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Media
+         * @description Serve a file from experiments/{exp}/{path}. Experiments are private by their unguessable
+         *     id: whoever has it can read the media (a <video> tag can't send a passcode), an unknown id is
+         *     a 404, and so is a path that is internal (the raw upload, the physicist's session).
+         */
+        get: operations["get_media"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Passcode
+         * @description 200 if the X-Ghostline-Key header is right, 401 if not. Lets the app validate a passcode
+         *     when the person types it.
+         */
+        get: operations["check_passcode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Job */
+        get: operations["get_job"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Job
+         * @description The Retry button: run a failed job again as a new job with the same inputs. Stages cache
+         *     their model and SAM calls, so a retry mostly re-reads.
+         */
+        post: operations["retry_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Benchmark */
+        get: operations["get_benchmark"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/{experiment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Benchmark
+         * @description Set the ground truth for one quantity of an experiment, and mark it as a benchmark.
+         */
+        put: operations["put_benchmark"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Overview */
+        get: operations["admin_overview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -25,17 +508,1627 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminBudget */
+        AdminBudget: {
+            /** Daily Usd */
+            daily_usd: number;
+            /** Spent Today Usd */
+            spent_today_usd: number;
+            /** Per Experiment Usd */
+            per_experiment_usd: number;
+        };
+        /** AdminCache */
+        AdminCache: {
+            /** Hit Rate */
+            hit_rate: number;
+            /** Calls 24H */
+            calls_24h: number;
+        };
+        /** AdminExperiment */
+        AdminExperiment: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "ingesting" | "ready" | "analyzing" | "complete" | "failed";
+            /** Llm Mode */
+            llm_mode: string;
+        };
+        /** AdminJob */
+        AdminJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ingest_trial" | "analyze_experiment" | "prove_trial" | "revise" | "rerun" | "export_verify";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            /** Phase */
+            phase?: ("normalizing" | "watching" | "tracking" | "calibrating" | "hypothesizing" | "fitting" | "peer_review" | "diagnosing" | "predicting" | "rendering" | "verifying") | null;
+            /**
+             * Progress
+             * @default 0
+             */
+            progress: number;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Attempt
+             * @default 0
+             */
+            attempt: number;
+            /** Retry Of */
+            retry_of?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * Heartbeat At
+             * Format: date-time
+             */
+            heartbeat_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Retryable
+             * @default true
+             */
+            retryable: boolean;
+            /** Experiment Title */
+            experiment_title: string;
+        };
+        /**
+         * AdminOverview
+         * @description GET /admin/overview: what the /admin page shows.
+         */
+        AdminOverview: {
+            budget: components["schemas"]["AdminBudget"];
+            cache: components["schemas"]["AdminCache"];
+            /** Jobs */
+            jobs: components["schemas"]["AdminJob"][];
+            /** Experiments */
+            experiments: components["schemas"]["AdminExperiment"][];
+        };
+        /** AnalyzeRequest */
+        AnalyzeRequest: {
+            /** Trial Id */
+            trial_id?: string | null;
+        };
+        /** AttachmentView */
+        AttachmentView: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "file";
+            /** Url */
+            url: string;
+            /** Caption */
+            caption: string | null;
+        };
+        /** AuthCheck */
+        AuthCheck: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+        };
+        /** BenchmarkEntry */
+        BenchmarkEntry: {
+            /** System */
+            system: string;
+            /** Quantity */
+            quantity: string;
+            /** Truth Value */
+            truth_value: number;
+            /** Truth Sigma */
+            truth_sigma?: number | null;
+            /**
+             * Truth Method
+             * @default
+             */
+            truth_method: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Clip Id */
+            clip_id?: string | null;
+            /**
+             * Object
+             * @default
+             */
+            object: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /** Expected Model */
+            expected_model?: string | null;
+            /**
+             * Is Failure Case
+             * @default false
+             */
+            is_failure_case: boolean;
+            /** Failure Expected */
+            failure_expected?: string | null;
+        };
+        /** BenchmarkRecord */
+        BenchmarkRecord: {
+            /** System */
+            system: string;
+            /** Quantity */
+            quantity: string;
+            /** Truth Value */
+            truth_value: number;
+            /** Truth Sigma */
+            truth_sigma?: number | null;
+            /**
+             * Truth Method
+             * @default
+             */
+            truth_method: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Clip Id */
+            clip_id?: string | null;
+            /**
+             * Object
+             * @default
+             */
+            object: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /** Expected Model */
+            expected_model?: string | null;
+            /**
+             * Is Failure Case
+             * @default false
+             */
+            is_failure_case: boolean;
+            /** Failure Expected */
+            failure_expected?: string | null;
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+        };
+        /** BenchmarkRowView */
+        BenchmarkRowView: {
+            /** Clip Id */
+            clip_id: string;
+            /** Experiment Id */
+            experiment_id: string | null;
+            /**
+             * System
+             * @enum {string}
+             */
+            system: "free_fall" | "projectile" | "pendulum" | "ramp" | "bounce" | "spin_down" | "oscillator" | "other";
+            /** Object */
+            object: string;
+            /** Quantity */
+            quantity: string;
+            /** Unit */
+            unit: string;
+            /** Truth */
+            truth: number;
+            /** Truth Sigma */
+            truth_sigma: number;
+            /** Truth Method */
+            truth_method: string;
+            /** Measured */
+            measured: number | null;
+            /** Ci Low */
+            ci_low: number | null;
+            /** Ci High */
+            ci_high: number | null;
+            /** Z */
+            z: number | null;
+            /** Covered */
+            covered: boolean | null;
+            /** Model Selected */
+            model_selected: string | null;
+            /** Model Expected */
+            model_expected: string | null;
+            /** Model Correct */
+            model_correct: boolean | null;
+            /** Confidence */
+            confidence: ("high" | "medium" | "low") | null;
+            /** Is Failure Case */
+            is_failure_case: boolean;
+            /** Failure Expected */
+            failure_expected: string | null;
+            /** Failure Flagged */
+            failure_flagged: boolean | null;
+            /** Note */
+            note: string | null;
+        };
+        /** BenchmarkSummaryView */
+        BenchmarkSummaryView: {
+            /** N Clips */
+            n_clips: number;
+            /** Coverage */
+            coverage: number;
+            /** Model Selection Accuracy */
+            model_selection_accuracy: number;
+            /** Failure Cases Flagged */
+            failure_cases_flagged: string;
+            /** Generated At */
+            generated_at: string;
+        };
+        /** BenchmarkTableView */
+        BenchmarkTableView: {
+            /** Rows */
+            rows: components["schemas"]["BenchmarkRowView"][];
+            summary: components["schemas"]["BenchmarkSummaryView"];
+        };
+        /** BudgetTermView */
+        BudgetTermView: {
+            /** Label */
+            label: string;
+            /** Sigma */
+            sigma: number;
+        };
+        /** CalibrationView */
+        CalibrationView: {
+            /**
+             * Paper
+             * @enum {string}
+             */
+            paper: "a4" | "letter";
+            /** Mm Per Px */
+            mm_per_px: number;
+            /** Sigma Scale Rel */
+            sigma_scale_rel: number;
+            /** Plane Offset Cm */
+            plane_offset_cm: number;
+            /**
+             * Gravity Source
+             * @enum {string}
+             */
+            gravity_source: "data" | "plumb" | "camera_level";
+            /** Ramp Angle Deg */
+            ramp_angle_deg: number | null;
+            /** Camera Motion Px */
+            camera_motion_px: number;
+            /** World To Px */
+            world_to_px: number[] | null;
+        };
+        /** CantTellView */
+        CantTellView: {
+            /** Reason */
+            reason: string;
+            /** Fixes */
+            fixes: string[];
+        };
+        /** ChunkReceipt */
+        ChunkReceipt: {
+            /**
+             * Upload Id
+             * Format: uuid
+             */
+            upload_id: string;
+            /** N */
+            n: number;
+            /** Size */
+            size: number;
+            /** Received Count */
+            received_count: number;
+            /** N Chunks */
+            n_chunks: number;
+        };
+        /** ConclusionView */
+        ConclusionView: {
+            /** Winner Id */
+            winner_id: string;
+            /** Quantities */
+            quantities: components["schemas"]["QuantityView"][];
+            /** Rejected */
+            rejected: components["schemas"]["RejectedView"][];
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /** Confidence Reasons */
+            confidence_reasons: string[];
+            /** Caveats */
+            caveats: string[];
+            /** Narrative Md */
+            narrative_md: string;
+            cant_tell: components["schemas"]["CantTellView"] | null;
+        };
+        /** DeclaredCapture */
+        DeclaredCapture: {
+            /**
+             * Mode
+             * @default normal
+             * @enum {string}
+             */
+            mode: "normal" | "slow_mo";
+            /** Fps */
+            fps?: number | null;
+        };
+        /** DeclaredCaptureView */
+        DeclaredCaptureView: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "normal" | "slow_mo";
+            /** Fps */
+            fps: number | null;
+        };
+        /** DeleteResult */
+        DeleteResult: {
+            /**
+             * Deleted
+             * @default true
+             * @constant
+             */
+            deleted: true;
+            /** Meta Files Deleted */
+            meta_files_deleted: number;
+            /** Meta Files Failed */
+            meta_files_failed: number;
+        };
+        /** ErrorBody */
+        ErrorBody: {
+            /** Detail */
+            detail: string;
+            /** Code */
+            code: string;
+        };
+        /** EventView */
+        EventView: {
+            /** Id */
+            id: number;
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+            /** Seq */
+            seq: number;
+            /** Ts */
+            ts: string;
+            /** Phase */
+            phase: string;
+            /**
+             * Actor
+             * @enum {string}
+             */
+            actor: "wonder" | "spark_open" | "harness" | "sam" | "system" | "user";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "observation" | "hypothesis" | "prediction" | "fit" | "rejection" | "acceptance" | "review" | "response" | "revision" | "ghost" | "whatif" | "warning";
+            /** Title */
+            title: string;
+            /** Body Md */
+            body_md: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Attachments */
+            attachments: components["schemas"]["AttachmentView"][];
+            /** Refs */
+            refs: components["schemas"]["RefView"][];
+        };
+        /**
+         * EventsView
+         * @description GET /experiments/{id}/events: new notebook events plus enough state to drive the stepper
+         *     from one poll.
+         */
+        EventsView: {
+            /** Events */
+            events: components["schemas"]["EventView"][];
+            /** Last Seq */
+            last_seq: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "ingesting" | "ready" | "analyzing" | "complete" | "failed" | "blocked";
+            job?: components["schemas"]["Job"] | null;
+        };
+        /** ExperimentCreate */
+        ExperimentCreate: {
+            /** Title */
+            title: string;
+            /**
+             * System Hint
+             * @default auto
+             * @enum {string}
+             */
+            system_hint: "free_fall" | "pendulum" | "ramp" | "bounce" | "spin_down" | "auto";
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            declared_capture?: components["schemas"]["DeclaredCapture"];
+            setup?: components["schemas"]["Setup"];
+        };
+        /**
+         * ExperimentPatch
+         * @description Admin edits: publish an experiment as an example, rename it.
+         */
+        ExperimentPatch: {
+            /** Title */
+            title?: string | null;
+            /** Is Example */
+            is_example?: boolean | null;
+            /** Visibility */
+            visibility?: ("private" | "public") | null;
+        };
+        /** ExperimentSummaryView */
+        ExperimentSummaryView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * System Type
+             * @enum {string}
+             */
+            system_type: "free_fall" | "projectile" | "pendulum" | "ramp" | "bounce" | "spin_down" | "oscillator" | "other";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "ingesting" | "ready" | "analyzing" | "complete" | "failed" | "blocked";
+            /** Created At */
+            created_at: string;
+            /** Is Example */
+            is_example: boolean;
+            /** Confidence */
+            confidence: ("high" | "medium" | "low") | null;
+            /** Review Status */
+            review_status: ("accepted" | "accepted_with_caveats" | "contested" | "not_reviewed" | "pending") | null;
+            /** Headline */
+            headline: string | null;
+            /** Winner Name */
+            winner_name: string | null;
+            /** Thumbnail Url */
+            thumbnail_url: string | null;
+            /** Blurb */
+            blurb: string | null;
+        };
+        /** ExperimentView */
+        ExperimentView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * System Type
+             * @enum {string}
+             */
+            system_type: "free_fall" | "projectile" | "pendulum" | "ramp" | "bounce" | "spin_down" | "oscillator" | "other";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "ingesting" | "ready" | "analyzing" | "complete" | "failed" | "blocked";
+            /** Created At */
+            created_at: string;
+            /** Is Example */
+            is_example: boolean;
+            /** Confidence */
+            confidence: ("high" | "medium" | "low") | null;
+            /** Review Status */
+            review_status: ("accepted" | "accepted_with_caveats" | "contested" | "not_reviewed" | "pending") | null;
+            /** Headline */
+            headline: string | null;
+            /** Winner Name */
+            winner_name: string | null;
+            /** Thumbnail Url */
+            thumbnail_url: string | null;
+            /** Blurb */
+            blurb: string | null;
+            /** Description */
+            description: string;
+            declared_capture: components["schemas"]["DeclaredCaptureView"];
+            setup: components["schemas"]["SetupView"];
+            scene: components["schemas"]["SceneView"] | null;
+            /** Trials */
+            trials: components["schemas"]["TrialView"][];
+            /** Models */
+            models: components["schemas"]["ModelView"][];
+            conclusion: components["schemas"]["ConclusionView"] | null;
+            review: components["schemas"]["ReviewThreadView"] | null;
+            /** Ghosts */
+            ghosts: components["schemas"]["GhostView"][];
+            whatif: components["schemas"]["WhatIfView"] | null;
+            /** Export Formats */
+            export_formats: ("json" | "pybullet")[];
+            /** Quality Flags */
+            quality_flags: components["schemas"]["QualityFlagView"][];
+            job: components["schemas"]["Job"] | null;
+            /** Error */
+            error: string | null;
+            /** Last Seq */
+            last_seq: number;
+            /** Cost Usd */
+            cost_usd?: number | null;
+        };
+        /** ExplainRequest */
+        ExplainRequest: {
+            /**
+             * Summary
+             * @description What the simulator showed, in words
+             */
+            summary: string;
+            /**
+             * Numbers
+             * @description The computed numbers, by name
+             */
+            numbers?: {
+                [key: string]: number | string;
+            };
+        };
+        /** ExplainResponse */
+        ExplainResponse: {
+            /** Text */
+            text: string;
+            /** Cached */
+            cached: boolean;
+        };
+        /** ExportedParam */
+        ExportedParam: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: number;
+            /** Ci95 */
+            ci95: [
+                number,
+                number
+            ];
+            /** Unit */
+            unit: string;
+            /** Definition */
+            definition: string;
+            /** From Model */
+            from_model: string;
+        };
+        /** FitDiagnosticsView */
+        FitDiagnosticsView: {
+            /** Reduced Chi2 */
+            reduced_chi2: number;
+            /** Lag1 Autocorr */
+            lag1_autocorr: number;
+            /** Durbin Watson */
+            durbin_watson: number;
+            /** Runs P */
+            runs_p: number;
+            /** Systematic Residual */
+            systematic_residual: boolean;
+        };
+        /** FitSeriesView */
+        FitSeriesView: {
+            /** T */
+            t: number[];
+            /** Observed */
+            observed: number[];
+            /** Predicted */
+            predicted: number[];
+            /** Split T */
+            split_t: number;
+            /** Unit */
+            unit: string;
+            /** Label */
+            label: string;
+        };
+        /** FitView */
+        FitView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Params */
+            params: components["schemas"]["ParamEstimateView"][];
+            /** Train Rmse */
+            train_rmse: number;
+            /** Heldout Rmse */
+            heldout_rmse: number;
+            /** Heldout Ci */
+            heldout_ci: [
+                number,
+                number
+            ];
+            /** Rmse Unit */
+            rmse_unit: string;
+            /** Nrmse */
+            nrmse: number;
+            /** Time To Divergence S */
+            time_to_divergence_s: number | null;
+            /** Aic */
+            aic: number;
+            /** Bic */
+            bic: number;
+            diagnostics: components["schemas"]["FitDiagnosticsView"];
+            plot_urls: components["schemas"]["PlotUrlsView"];
+            series: components["schemas"]["FitSeriesView"] | null;
+            /** Splits Won */
+            splits_won: number;
+        };
+        /** GhostView */
+        GhostView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Version */
+            version: number;
+            /**
+             * Trial Id
+             * Format: uuid
+             */
+            trial_id: string;
+            /** Model Id */
+            model_id: string;
+            /** Model Name */
+            model_name: string;
+            /** Video Url */
+            video_url: string;
+            /** Slow Video Url */
+            slow_video_url: string | null;
+            /** Track Url */
+            track_url: string;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Divergence Onset S */
+            divergence_onset_s: number | null;
+            /** Max Error Mm */
+            max_error_mm: number;
+            /** Threshold Mm */
+            threshold_mm: number;
+            /** Predicted Ahead S */
+            predicted_ahead_s: number;
+            revision: components["schemas"]["RevisionView"] | null;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** Health */
         Health: {
             /**
              * Status
-             * @constant
+             * @enum {string}
              */
-            status: "ok";
+            status: "ok" | "degraded";
             /** Version */
             version: string;
             /** Llm Mode */
             llm_mode: string;
+            /**
+             * Database
+             * @enum {string}
+             */
+            database: "ok" | "error" | "unconfigured" | "skipped";
+            /**
+             * Volume
+             * @enum {string}
+             */
+            volume: "ok" | "error" | "unconfigured" | "skipped";
+            /**
+             * Meta Api
+             * @enum {string}
+             */
+            meta_api: "ok" | "error" | "unconfigured" | "skipped";
+        };
+        /** Job */
+        Job: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ingest_trial" | "analyze_experiment" | "prove_trial" | "revise" | "rerun" | "export_verify";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            /** Phase */
+            phase?: ("normalizing" | "watching" | "tracking" | "calibrating" | "hypothesizing" | "fitting" | "peer_review" | "diagnosing" | "predicting" | "rendering" | "verifying") | null;
+            /**
+             * Progress
+             * @default 0
+             */
+            progress: number;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Attempt
+             * @default 0
+             */
+            attempt: number;
+            /** Retry Of */
+            retry_of?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * Heartbeat At
+             * Format: date-time
+             */
+            heartbeat_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Retryable
+             * @default true
+             */
+            retryable: boolean;
+        };
+        /** ModelView */
+        ModelView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Round */
+            round: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "library" | "wonder";
+            /** Library Ref */
+            library_ref: string | null;
+            /** Mechanism */
+            mechanism: string;
+            /** Equations Latex */
+            equations_latex: string;
+            /** Prior Rank */
+            prior_rank: number;
+            /** Refuting Signature */
+            refuting_signature: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "proposed" | "winner" | "tied" | "rejected" | "invalid";
+            /** Rejection Reason */
+            rejection_reason: string | null;
+            fit: components["schemas"]["FitView"] | null;
+        };
+        /** ObjectView */
+        ObjectView: {
+            /** Name */
+            name: string;
+            /** Radius M */
+            radius_m: number;
+            /** Mass Kg */
+            mass_kg: number | null;
+        };
+        /** ParamEstimateView */
+        ParamEstimateView: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+            /** Ci Low */
+            ci_low: number;
+            /** Ci High */
+            ci_high: number;
+            /** Unit */
+            unit: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "physical" | "initial_condition" | "nuisance";
+            /** At Bound */
+            at_bound?: boolean | null;
+        };
+        /** PlotUrlsView */
+        PlotUrlsView: {
+            /** Fit */
+            fit: string | null;
+            /** Residuals */
+            residuals: string | null;
+        };
+        /** ProveRequest */
+        ProveRequest: {
+            /** Trial Id */
+            trial_id?: string | null;
+        };
+        /** QualityFlagView */
+        QualityFlagView: {
+            /** Id */
+            id: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "minor" | "major";
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+        };
+        /** QuantityView */
+        QuantityView: {
+            /** Name */
+            name: string;
+            /** Symbol Latex */
+            symbol_latex: string;
+            /** Value */
+            value: number;
+            /** Ci Low */
+            ci_low: number;
+            /** Ci High */
+            ci_high: number;
+            /** Unit */
+            unit: string;
+            /** Budget */
+            budget: components["schemas"]["BudgetTermView"][] | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** RefView */
+        RefView: {
+            /** Kind */
+            kind: string;
+            /** Id */
+            id: string;
+        };
+        /** RejectedView */
+        RejectedView: {
+            /** Id */
+            id: string;
+            /** Reason */
+            reason: string;
+            /** Evidence */
+            evidence: string;
+        };
+        /** RerunRequest */
+        RerunRequest: {
+            /**
+             * Split Pct
+             * @default 0.65
+             */
+            split_pct: number;
+            /** Initial Guesses */
+            initial_guesses?: {
+                [key: string]: number;
+            };
+        };
+        /** ReviewIssueView */
+        ReviewIssueView: {
+            /** Id */
+            id: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "minor" | "major";
+            /** Claim */
+            claim: string;
+            /** Evidence */
+            evidence: string;
+            /**
+             * Requested Action
+             * @enum {string}
+             */
+            requested_action: "run_model" | "refit" | "lower_confidence" | "add_caveat" | "none";
+            /** Detail */
+            detail: string;
+        };
+        /** ReviewRoundView */
+        ReviewRoundView: {
+            /** Round */
+            round: number;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "accept" | "accept_with_caveats" | "challenge";
+            /** Issues */
+            issues: components["schemas"]["ReviewIssueView"][];
+            /** Summary */
+            summary: string;
+            /** Response Md */
+            response_md: string | null;
+        };
+        /** ReviewThreadView */
+        ReviewThreadView: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "accepted_with_caveats" | "contested" | "not_reviewed" | "pending";
+            /** Rounds */
+            rounds: components["schemas"]["ReviewRoundView"][];
+        };
+        /** ReviseRequest */
+        ReviseRequest: {
+            /** Ghost Id */
+            ghost_id?: string | null;
+        };
+        /** RevisionView */
+        RevisionView: {
+            /** Diagnosis */
+            diagnosis: string;
+            /** Adopted */
+            adopted: boolean;
+            /** Note */
+            note: string;
+        };
+        /** SceneView */
+        SceneView: {
+            /**
+             * System Type
+             * @enum {string}
+             */
+            system_type: "free_fall" | "projectile" | "pendulum" | "ramp" | "bounce" | "spin_down" | "oscillator" | "other";
+            /** Description */
+            description: string;
+            /** Tracked Objects */
+            tracked_objects: components["schemas"]["TrackedObjectView"][];
+            /** Object Properties */
+            object_properties: {
+                [key: string]: unknown;
+            };
+            /** Initial Hypotheses */
+            initial_hypotheses: {
+                [key: string]: unknown;
+            }[];
+            /** Quality Issues */
+            quality_issues: {
+                [key: string]: unknown;
+            }[];
+            /** Proceed */
+            proceed: boolean;
+            /** Reason If Not */
+            reason_if_not: string | null;
+        };
+        /** Setup */
+        Setup: {
+            /**
+             * Plane Offset Cm
+             * @default 2
+             */
+            plane_offset_cm: number;
+            /**
+             * Paper
+             * @default a4
+             * @enum {string}
+             */
+            paper: "a4" | "letter";
+            /** Pendulum Length Cm */
+            pendulum_length_cm?: number | null;
+        };
+        /** SetupView */
+        SetupView: {
+            /** Plane Offset Cm */
+            plane_offset_cm: number;
+            /**
+             * Paper
+             * @enum {string}
+             */
+            paper: "a4" | "letter";
+            /** Pendulum Length Cm */
+            pendulum_length_cm: number | null;
+        };
+        /** SimExport */
+        SimExport: {
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: "ghostline.sim/1";
+            /** Experiment Url */
+            experiment_url: string;
+            /** Object */
+            object: string;
+            /** Surface */
+            surface?: string | null;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /** Mass Kg */
+            mass_kg?: number | null;
+            /** Parameters */
+            parameters: components["schemas"]["ExportedParam"][];
+            /** Randomization */
+            randomization: {
+                [key: string]: [
+                    number,
+                    number
+                ];
+            };
+            /** Valid For */
+            valid_for: {
+                [key: string]: unknown;
+            };
+            /** Replay Check */
+            replay_check?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * SimulateBody
+         * @description POST /experiments/{id}/simulate. `model_id` defaults to the winner; `initial` overrides
+         *     initial-condition parameters and `params` the rest, both by parameter name.
+         */
+        SimulateBody: {
+            /** Model Id */
+            model_id?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: number;
+            };
+            /** Initial */
+            initial?: {
+                [key: string]: number;
+            };
+            /**
+             * T End
+             * @description Seconds to simulate
+             * @default 10
+             */
+            t_end: number;
+            /**
+             * Dt
+             * @description Output spacing, seconds
+             * @default 0.016666666666666666
+             */
+            dt: number;
+        };
+        /** SimulateResponse */
+        SimulateResponse: {
+            /** Model Id */
+            model_id: string;
+            /** T */
+            t: number[];
+            /** Series */
+            series: {
+                [key: string]: number[];
+            };
+            /** Derived */
+            derived?: {
+                [key: string]: number;
+            };
+            /** Observables */
+            observables: number[][];
+        };
+        /** TimingView */
+        TimingView: {
+            /**
+             * Classification
+             * @enum {string}
+             */
+            classification: "cfr" | "vfr_jitter" | "mixed" | "retimed";
+            /** Detected Fps */
+            detected_fps: number;
+            /**
+             * Declared Mode
+             * @enum {string}
+             */
+            declared_mode: "normal" | "slow_mo";
+            /** Declared Fps */
+            declared_fps: number;
+            /** Time Factor */
+            time_factor: number;
+            /** Jitter Pct */
+            jitter_pct: number;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** TrackedObjectView */
+        TrackedObjectView: {
+            /** Key */
+            key: string;
+            /** Sam Prompt */
+            sam_prompt: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "moving_body" | "marker" | "pivot" | "surface";
+            /** Why */
+            why: string;
+        };
+        /** TrajectoryEvent */
+        TrajectoryEvent: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "release" | "impact" | "stop";
+            /** T */
+            t: number;
+        };
+        /**
+         * TrajectoryView
+         * @description Positions in metres, angles in radians, time in real seconds. Arrays line up by index;
+         *     a missing value (a dropped frame) is null.
+         */
+        TrajectoryView: {
+            /** T */
+            t: number[];
+            /** X */
+            x: (number | null)[] | null;
+            /** Y */
+            y: (number | null)[] | null;
+            /** Theta */
+            theta: (number | null)[] | null;
+            /** Phi */
+            phi: (number | null)[] | null;
+            /** Omega */
+            omega: (number | null)[] | null;
+            /** Px */
+            px: (number[] | null)[];
+            /** Split T */
+            split_t: number;
+            /** Noise Sigma */
+            noise_sigma: number;
+            /**
+             * Main
+             * @enum {string}
+             */
+            main: "x" | "y" | "theta" | "phi";
+            /** Main Unit */
+            main_unit: string;
+            /** Events */
+            events: components["schemas"]["TrajectoryEvent"][];
+        };
+        /** Trial */
+        Trial: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "fit" | "prove";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploaded" | "ingesting" | "ready" | "failed";
+            /** Original Filename */
+            original_filename?: string | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Paths */
+            paths?: {
+                [key: string]: string;
+            };
+            /** Meta File Ids */
+            meta_file_ids?: {
+                [key: string]: string;
+            };
+            /** Probe */
+            probe?: {
+                [key: string]: unknown;
+            } | null;
+            /** Timing */
+            timing?: {
+                [key: string]: unknown;
+            } | null;
+            trim?: components["schemas"]["Trim"] | null;
+            /** N Frames */
+            n_frames?: number | null;
+            /** Duration S */
+            duration_s?: number | null;
+            /** Calibration */
+            calibration?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** TrialMediaView */
+        TrialMediaView: {
+            /** Playback Url */
+            playback_url: string;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Calib Overlay Url */
+            calib_overlay_url: string | null;
+            /** Trajectory Url */
+            trajectory_url: string | null;
+            /** Sam Events Url */
+            sam_events_url: string | null;
+        };
+        /** TrialView */
+        TrialView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "fit" | "prove";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploading" | "ingesting" | "ready" | "tracking" | "tracked" | "failed";
+            /** Width */
+            width: number;
+            /** Height */
+            height: number;
+            /** N Frames */
+            n_frames: number;
+            /** Duration S */
+            duration_s: number;
+            timing: components["schemas"]["TimingView"] | null;
+            trim: components["schemas"]["TrimView"];
+            calibration: components["schemas"]["CalibrationView"] | null;
+            /** Quality Flags */
+            quality_flags: components["schemas"]["QualityFlagView"][];
+            media: components["schemas"]["TrialMediaView"];
+            /** Error */
+            error: string | null;
+        };
+        /** Trim */
+        Trim: {
+            /** Start S */
+            start_s: number;
+            /** End S */
+            end_s: number;
+            /** Suggested Start S */
+            suggested_start_s?: number | null;
+            /** Suggested End S */
+            suggested_end_s?: number | null;
+            /**
+             * Source
+             * @default auto
+             * @enum {string}
+             */
+            source: "auto" | "user";
+        };
+        /**
+         * TrimRequest
+         * @description Omit a field to keep the auto-suggested value.
+         */
+        TrimRequest: {
+            /** Start S */
+            start_s?: number | null;
+            /** End S */
+            end_s?: number | null;
+        };
+        /** TrimView */
+        TrimView: {
+            /** Start S */
+            start_s: number;
+            /** End S */
+            end_s: number;
+            /** Suggested Start S */
+            suggested_start_s: number;
+            /** Suggested End S */
+            suggested_end_s: number;
+        };
+        /** UploadComplete */
+        UploadComplete: {
+            /**
+             * Trial Id
+             * Format: uuid
+             */
+            trial_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+            job: components["schemas"]["Job"];
+        };
+        /** UploadCreate */
+        UploadCreate: {
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+            /**
+             * Role
+             * @default fit
+             * @enum {string}
+             */
+            role: "fit" | "prove";
+            /** Filename */
+            filename: string;
+            /**
+             * Size
+             * @description File size in bytes
+             */
+            size: number;
+        };
+        /** UploadInfo */
+        UploadInfo: {
+            /**
+             * Upload Id
+             * Format: uuid
+             */
+            upload_id: string;
+            /**
+             * Experiment Id
+             * Format: uuid
+             */
+            experiment_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "fit" | "prove";
+            /** Filename */
+            filename: string;
+            /** Size */
+            size: number;
+            /** Chunk Size */
+            chunk_size: number;
+            /** N Chunks */
+            n_chunks: number;
+            /** Received Chunks */
+            received_chunks: number[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "complete";
+            /** Trial Id */
+            trial_id?: string | null;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /** WhatIfView */
+        WhatIfView: {
+            /**
+             * System
+             * @enum {string}
+             */
+            system: "free_fall" | "pendulum" | "ramp" | "bounce" | "spin_down";
+            /** Model Ref */
+            model_ref: string;
+            /** Params */
+            params: {
+                [key: string]: number;
+            };
+            /** Fixed */
+            fixed: {
+                [key: string]: number;
+            };
+            /** Initial */
+            initial: {
+                [key: string]: number;
+            };
+            /** Measured Range */
+            measured_range: {
+                [key: string]: [
+                    number,
+                    number
+                ];
+            };
+            object: components["schemas"]["ObjectView"];
+            /** Still Url */
+            still_url: string | null;
+            /** Sim Supported */
+            sim_supported: boolean;
+            /** Anchor M */
+            anchor_m: [
+                number,
+                number
+            ];
+        };
+        /**
+         * GhostTrackView
+         * @description The contents of ghost/v{n}_track.json, written by the stage that renders the ghost (Part 16)
+         *     and read by the browser. Per-frame arrays line up with `t`; pixels are master pixels.
+         */
+        GhostTrackView: {
+            /** T */
+            t: number[];
+            /** Error Mm */
+            error_mm: number[];
+            /** Predicted Px */
+            predicted_px: number[][];
+            /** Actual Px */
+            actual_px: number[][];
+            /** Tau Mm */
+            tau_mm: number;
+            /** Onset S */
+            onset_s: number | null;
+            /** Launch Window S */
+            launch_window_s: number;
+        };
+        /** ModelProposal */
+        ModelProposal: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Mechanism */
+            mechanism: string;
+            /** Equations Latex */
+            equations_latex: string;
+            /**
+             * Library Ref
+             * @default null
+             */
+            library_ref: string | null;
+            /**
+             * Code
+             * @default null
+             */
+            code: string | null;
+            /**
+             * Params
+             * @default null
+             */
+            params: {
+                [key: string]: components["schemas"]["ParamSpec"];
+            } | null;
+            /** Prior Rank */
+            prior_rank: number;
+            /** Refuting Signature */
+            refuting_signature: string;
+        };
+        /** ParamSpec */
+        ParamSpec: {
+            /** Init */
+            init: number;
+            /** Lower */
+            lower: number;
+            /** Upper */
+            upper: number;
+            /** Unit */
+            unit: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "physical" | "initial_condition" | "nuisance";
+        };
+        /** Review */
+        Review: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "accept" | "accept_with_caveats" | "challenge";
+            /** Issues */
+            issues: components["schemas"]["ReviewIssue"][];
+            /** Summary */
+            summary: string;
+        };
+        /** ReviewIssue */
+        ReviewIssue: {
+            /** Id */
+            id: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "minor" | "major";
+            /** Claim */
+            claim: string;
+            /** Evidence */
+            evidence: string;
+            /**
+             * Requested Action
+             * @enum {string}
+             */
+            requested_action: "run_model" | "refit" | "lower_confidence" | "add_caveat" | "none";
+            /** Detail */
+            detail: string;
         };
     };
     responses: never;
@@ -46,7 +2139,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_api_health_get: {
+    health: {
         parameters: {
             query?: never;
             header?: never;
@@ -62,6 +2155,2984 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    list_experiments: {
+        parameters: {
+            query?: {
+                /** @description Only the public example experiments */
+                examples?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentSummaryView"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    patch_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentSummaryView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_events: {
+        parameters: {
+            query?: {
+                /** @description Return events with a higher seq */
+                after?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventsView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_trajectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trial_id: string;
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrajectoryView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    analyze: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    prove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProveRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    revise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviseRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    rerun_model: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RerunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    verify_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    simulate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    explain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplainResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    export: {
+        parameters: {
+            query?: {
+                format?: "json" | "pybullet";
+                /** @description Object mass, grams */
+                mass_g?: number | null;
+            };
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimExport"];
+                    "text/x-python": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInfo"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInfo"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_chunk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+                n: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    complete_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadComplete"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    set_trim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trial_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TrimRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Trial"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Partial content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such file */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_passcode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthCheck"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    retry_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_benchmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkTableView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_benchmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkEntry"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkRecord"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    admin_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };
