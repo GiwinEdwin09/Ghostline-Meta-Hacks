@@ -138,7 +138,7 @@ def measure(repo: ExportRepo, experiment: Experiment) -> Measurement:
     half = size_cm / 200 if size_cm else DEFAULT_HALF_SIZE_M
     geometry: dict[str, float] = {}
     ranges: dict[str, list[float]] = {}
-    speed_max = ((summary.get("ranges") or {}).get("speed_max_m_s"))
+    speed_max = (summary.get("ranges") or {}).get("speed_max_m_s")
     if speed_max:
         ranges["speed_m_s"] = [0.0, float(speed_max)]
 

@@ -1,13 +1,12 @@
 """The PyBullet snippet (build plan Part 19).
 
 `render_pybullet` writes a Python script that applies the measured numbers with `changeDynamics`
-and `setJointMotorControl2` and then replays the experiment once, so it runs as it is after
-`pip install pybullet`. The same text is what the replay check runs in the Sandbox: what the
-user downloads is what was verified.
+and `setJointMotorControl2` and then runs a small demonstration, so it works as it is after
+`pip install pybullet`.
 
 The script has two halves. Up to `apply_ghostline_dynamics` is meant to be pasted into the
 user's own scene; `simulate` below it rebuilds the experiment (a block on a ramp, a ball drop, a
-falling ball, a pendulum) from the measured geometry and reports what the simulation reproduces.
+falling ball, a pendulum) from the measured geometry and prints what the simulation does.
 """
 
 from __future__ import annotations
@@ -19,15 +18,14 @@ from string import Template
 
 from ghostline.jobs.errors import StageError
 
-from . import replay_math
+from . import demo_math
 from .build import applicability_notes, exported_parameters, moment_of_inertia
 from .conversions import BULLET_DEFAULT_DAMPING
 from .expectations import PENDULUM_PARAM, TIMESTEP_HZ, pendulum_duration_s, restitution_triplet
-from .mapping import REPLAY_SCENARIOS
+from .mapping import DEMOS
 from .measured import Measurement
 
 PLACEHOLDER_MASS_KG = 0.1  # friction, restitution and linear damping don't depend on mass
-REFERENCE_MASS_KG = 1.0  # the replay's pendulum: rates per unit of inertia make the mass moot
 MAX_RUN_S = 30.0
 
 _HEADER = Template('''\
@@ -40,13 +38,13 @@ Source:   $url   (confidence: $confidence)
 Every value below was measured by filming the real thing, with its 95% interval beside it.
 $notes
 
-Run this file as it is (pip install pybullet) to replay the experiment: it rebuilds the setup
-from the measured geometry, steps PyBullet at 240 Hz and prints what the simulation reproduces.
+Run this file as it is (pip install pybullet) for a demonstration: it rebuilds the setup from
+the measured geometry, steps PyBullet at 240 Hz and prints what the simulation does.
 The part down to apply_ghostline_dynamics() is the part to paste into your own scene.
 """
 $imports
 
-DT = 1.0 / $hz  # the replay check steps at $hz Hz
+DT = 1.0 / $hz  # the demonstration steps at $hz Hz
 ''')
 
 _RAMP = Template('''\
@@ -323,7 +321,7 @@ def apply_ghostline_dynamics(body, joint=0):
 $joint_apply
 $drag''')
 
-_TAIL = Template('''
+_TAIL = Template("""
 # Ranges to randomize over in training: the 95% intervals above, in the same units. They cover
 # measurement uncertainty only; part-to-part variation needs wider ranges.
 RANDOMIZATION = {
@@ -331,12 +329,12 @@ $randomization
 }
 
 $main
-''')
+""")
 
-_MAIN_REPLAY = '''if __name__ == "__main__":
-    print(simulate())'''
-_MAIN_APPLY = '''if __name__ == "__main__":
-    print("Call apply_ghostline_dynamics() on your bodies after creating them.")'''
+_MAIN_REPLAY = """if __name__ == "__main__":
+    print(simulate())"""
+_MAIN_APPLY = """if __name__ == "__main__":
+    print("Call apply_ghostline_dynamics() on your bodies after creating them.")"""
 
 _DRAG_BODY = Template('''
 
@@ -378,7 +376,7 @@ def _helpers(*functions) -> str:
 
 
 def _resolve_mass(
-    m: Measurement, mass_kg: float | None, inertia_kg_m2: float | None, replay: bool
+    m: Measurement, mass_kg: float | None, inertia_kg_m2: float | None
 ) -> tuple[float | None, str]:
     """The mass to write into the script, and the comment that says where it came from."""
     if m.system == "spin_down":
@@ -392,8 +390,6 @@ def _resolve_mass(
     if m.system == "pendulum":
         if mass_kg:
             return mass_kg, "as entered"
-        if replay:
-            return REFERENCE_MASS_KG, "reference mass: the replay uses rates per unit of inertia"
         raise StageError(
             "Enter the bob's mass in grams to export the pendulum to PyBullet.",
             code="mass_required",
@@ -493,7 +489,7 @@ def _scenario(m: Measurement, mass: float | None, mass_note: str, inertia: float
             duration = min(8.0 / rate, MAX_RUN_S)
             approach = f"(1.0 - math.exp(-{rate_name} * DURATION_S))"
             apply_lines = [
-                "    # Bullet scales a rigid body's velocity by (1 - linearDamping) ** dt every step,",
+                "    # Bullet scales a rigid body's speed by (1 - linearDamping) ** dt each step,",
                 "    # so a measured decay rate lambda needs linearDamping = 1 - exp(-lambda).",
                 "    p.changeDynamics(",
                 "        ball, -1, linearDamping=1.0 - math.exp(-DAMPING_LINEAR_RATE),",
@@ -551,7 +547,7 @@ def _scenario(m: Measurement, mass: float | None, mass_note: str, inertia: float
             gravity=_num(m.gravity),
             length=_num(length),
             half=_num(m.geometry.get("bob_radius_m", m.half_size_m)),
-            mass=_num(mass or REFERENCE_MASS_KG),
+            mass=_num(mass or PLACEHOLDER_MASS_KG),
             mass_note=mass_note,
             amplitude=_num(m.geometry.get("amplitude_rad", 0.5)),
             duration=_num(round(pendulum_duration_s(m), 3)),
@@ -597,14 +593,11 @@ def render_pybullet(
     m: Measurement,
     mass_kg: float | None = None,
     inertia_kg_m2: float | None = None,
-    *,
-    replay: bool = False,
 ) -> str:
-    """The PyBullet script for the winner. `replay=True` allows a reference mass for a pendulum,
-    for the replay check, which asks no one for it."""
-    mass, mass_note = _resolve_mass(m, mass_kg, inertia_kg_m2, replay)
+    """The PyBullet script for the winner."""
+    mass, mass_note = _resolve_mass(m, mass_kg, inertia_kg_m2)
     inertia = moment_of_inertia(m, mass, inertia_kg_m2)
-    scenario = REPLAY_SCENARIOS.get(m.model_id)
+    scenario = DEMOS.get(m.model_id)
     needs = {
         "ramp": ["math"],
         "bounce": ["math"],
@@ -616,9 +609,9 @@ def render_pybullet(
     imports = "\n".join(f"import {name}" for name in sorted(needs)) + "\n\nimport pybullet as p"
     helpers = {
         "ramp": (),
-        "bounce": (replay_math.rebound_heights, replay_math.geometric_ratio),
+        "bounce": (demo_math.rebound_heights, demo_math.geometric_ratio),
         "free_fall": (),
-        "pendulum": (replay_math.half_life, replay_math.mean_period),
+        "pendulum": (demo_math.half_life, demo_math.mean_period),
     }.get(scenario or "", ())
 
     notes = "\n".join(

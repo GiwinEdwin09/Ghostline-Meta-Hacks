@@ -50,7 +50,10 @@ _E0 = Mapping(
     "e0", "restitution.e0", "", "Restitution at zero impact speed in e = e0 - e1 |v| (e0)."
 )
 _E1 = Mapping(
-    "e1", "restitution.e1", "s/m", "Fall of restitution per m/s of impact speed in e = e0 - e1 |v| (e1)."
+    "e1",
+    "restitution.e1",
+    "s/m",
+    "Fall of restitution per m/s of impact speed in e = e0 - e1 |v| (e1).",
 )
 _B = Mapping(
     "b",
@@ -119,8 +122,8 @@ EXPORTS: dict[str, tuple[Mapping, ...]] = {
     "S3": (_SPIN_C, _SPIN_K),
 }
 
-# Models whose export can be replayed in PyBullet, and what the replay rebuilds.
-REPLAY_SCENARIOS: dict[str, str] = {
+# Models the snippet can demonstrate in PyBullet, and what the demonstration rebuilds.
+DEMOS: dict[str, str] = {
     "FF1": "free_fall",
     "FF2": "free_fall",
     "R1": "ramp",

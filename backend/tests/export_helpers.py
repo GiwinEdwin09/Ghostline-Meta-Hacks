@@ -113,7 +113,9 @@ def build(
         created_at=datetime.now(UTC),
     )
     trajectory = TrajectoryRecord(trial_id=trial.id, summary=summary or {})
-    record = ModelRecord(experiment_id=eid, id=winner, name=winner, library_ref=winner, source=source)  # type: ignore[arg-type]
+    record = ModelRecord(
+        experiment_id=eid, id=winner, name=winner, library_ref=winner, source=source
+    )  # type: ignore[arg-type]
     return FakeRepo(experiment, [record], [trial], [trajectory]), experiment
 
 

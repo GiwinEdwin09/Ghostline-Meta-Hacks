@@ -1,15 +1,14 @@
-"""Entry points the lead wires into `jobs/stages.py` (build plan Part 19).
+"""Entry points for the simulator export (build plan Part 19), called from `jobs/stages.py`.
 
-The signatures match the stubs there: `build_export(repo, experiment, fmt, mass_g)` for
-`GET /export` and `verify_export(ctx, experiment)` for the `export_verify` job. `build_export`
-takes one optional extra, `inertia_kg_m2`, for a spinner whose moment of inertia the user knows.
+`build_export(repo, experiment, fmt, mass_g)` serves `GET /export`. It takes one optional
+extra, `inertia_kg_m2`, for a spinner whose moment of inertia the user knows. There is no replay
+check: `verify_export` stays a stub.
 """
 
 from __future__ import annotations
 
 from typing import Literal
 
-from ghostline.jobs.context import JobContext
 from ghostline.jobs.errors import StageError
 from ghostline.store.core_schemas import SimExport
 from ghostline.store.records import Experiment
@@ -19,7 +18,6 @@ from .build import build_json
 from .mapping import export_formats
 from .measured import measure
 from .snippet import render_pybullet
-from .verify_pybullet import replay, run_in_sandbox
 
 
 def build_export(
@@ -44,13 +42,3 @@ def available_formats(repo: Repo, experiment: Experiment) -> list[str]:
         return export_formats(measure(repo, experiment).model_id)
     except StageError:
         return []
-
-
-def verify_export(ctx: JobContext, experiment: Experiment) -> dict:
-    """The PyBullet replay check. Returns the replay_check dict."""
-    ctx.progress(0.05)
-    m = measure(ctx.repo, experiment)
-    ctx.progress(0.15)
-    check = replay(m, runner=run_in_sandbox)
-    ctx.progress(1.0)
-    return check

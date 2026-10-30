@@ -1,8 +1,7 @@
 """Measurements on a simulated trajectory, in plain Python (build plan Part 19).
 
-These functions have no imports. The PyBullet snippet embeds their source, so the script a
-user downloads measures the replay exactly as the trusted side measures the model it compares
-against. Each takes lists of floats (sample times and values).
+These functions have no imports. The PyBullet snippet embeds their source so that it stands
+alone. Each takes lists of floats (sample times and values).
 """
 
 
@@ -48,7 +47,8 @@ def half_life(t, y):
         if abs(y[i]) >= abs(y[i - 1]) and abs(y[i]) > abs(y[i + 1]):
             peaks.append((t[i], abs(y[i])))
     target = peaks[0][1] / 2.0
-    for (t0, a0), (t1, a1) in zip(peaks[:-1], peaks[1:]):
+    for k in range(len(peaks) - 1):
+        (t0, a0), (t1, a1) = peaks[k], peaks[k + 1]
         if a1 <= target < a0:
             return t0 + (t1 - t0) * (a0 - target) / (a0 - a1)
     return None

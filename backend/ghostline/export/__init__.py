@@ -1,1 +1,1 @@
-"""Simulator export formats and the PyBullet replay check (build plan Part 19)."""
+"""Simulator export formats: the Ghostline JSON and a PyBullet snippet (build plan Part 19)."""

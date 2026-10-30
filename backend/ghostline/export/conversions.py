@@ -96,5 +96,5 @@ def restitution_interval_at_speed(
 
 
 def bounce_height_ratio(e: float) -> float:
-    """Successive bounce heights shrink by e squared (the speed is scaled by e, the height by e^2)."""
+    """Successive bounce heights shrink by e squared: speed scales by e, height by e^2."""
     return e * e
