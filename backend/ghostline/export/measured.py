@@ -88,7 +88,8 @@ def _fit_trial(repo: ExportRepo, experiment: Experiment) -> tuple[Trial | None, 
     return trial, (summaries[0] if summaries else {})
 
 
-def _names(experiment: Experiment) -> tuple[str, str | None, float | None]:
+def describe_objects(experiment: Experiment) -> tuple[str, str | None, float | None]:
+    """(moving body, surface, size in cm) as the scene analysis named them."""
     scene = experiment.scene
     if scene is None:
         return experiment.title, None, None
@@ -113,7 +114,7 @@ def impact_speeds(summary: dict[str, Any], g: float, drop_height_m: float | None
     return [s for s in speeds if s > 0]
 
 
-def _amplitude_range_deg(summary: dict[str, Any]) -> list[float] | None:
+def amplitude_range_deg(summary: dict[str, Any]) -> list[float] | None:
     theta = np.asarray((summary.get("samples") or {}).get("theta") or [], dtype=float)
     rng = (summary.get("ranges") or {}).get("theta")
     if theta.size >= 5:
@@ -132,7 +133,7 @@ def measure(repo: ExportRepo, experiment: Experiment) -> Measurement:
     quantities = {q.name: q for q in experiment.conclusion.quantities}
     trial, summary = _fit_trial(repo, experiment)
     calibration = (trial.calibration if trial else None) or {}
-    object_name, surface_name, size_cm = _names(experiment)
+    object_name, surface_name, size_cm = describe_objects(experiment)
     system = system_of(model_id)
 
     half = size_cm / 200 if size_cm else DEFAULT_HALF_SIZE_M
@@ -161,7 +162,7 @@ def measure(repo: ExportRepo, experiment: Experiment) -> Measurement:
         if radius:
             geometry["bob_radius_m"] = float(radius)
             half = float(radius)
-        amplitude = _amplitude_range_deg(summary)
+        amplitude = amplitude_range_deg(summary)
         if amplitude:
             ranges["amplitude_deg"] = amplitude
             geometry["amplitude_rad"] = math.radians(amplitude[1])

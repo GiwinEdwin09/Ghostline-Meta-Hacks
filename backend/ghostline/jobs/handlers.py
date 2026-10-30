@@ -2,6 +2,7 @@
 return, and keep the notebook and the experiment row up to date. Stage calls go through
 `jobs.stages` so tests and wave 2 can replace them."""
 
+import logging
 from collections.abc import Callable
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,9 @@ from ghostline.store.records import (
     TrajectoryRecord,
     Trial,
 )
+from ghostline.whatif import build_whatif, trajectory_frame
+
+log = logging.getLogger("ghostline.jobs")
 
 Handler = Callable[[JobContext], None]
 
@@ -167,13 +171,29 @@ def analyze_experiment(ctx: JobContext) -> None:
 
     ctx.phase("peer_review")
     outcome = _stage(stages.run_review, ctx, experiment, conclusion)
-    ctx.repo.update_experiment(
-        experiment.id,
-        review_status=outcome.review_status,
-        conclusion=outcome.conclusion,
-        winner_model_id=outcome.conclusion.winner_id,
-        confidence=outcome.conclusion.confidence,
+    experiment = (
+        ctx.repo.update_experiment(
+            experiment.id,
+            review_status=outcome.review_status,
+            conclusion=outcome.conclusion,
+            winner_model_id=outcome.conclusion.winner_id,
+            confidence=outcome.conclusion.confidence,
+        )
+        or experiment
     )
+    _save_whatif(ctx, experiment)
+
+
+def _save_whatif(ctx: JobContext, experiment: Experiment) -> None:
+    """Store the What-if tab's data for the winner. A clip it can't be built from, or a failure
+    here, only leaves the tab off: the analysis itself is done."""
+    try:
+        root = ctx.paths.experiment_dir(experiment.id)
+        context = build_whatif(ctx.repo, experiment, trajectory_frame(root, ctx.repo, experiment))
+        if context is not None:
+            ctx.repo.update_experiment(experiment.id, whatif=context)
+    except Exception:
+        log.warning("could not build the what-if context", exc_info=True)
 
 
 def prove_trial(ctx: JobContext) -> None:

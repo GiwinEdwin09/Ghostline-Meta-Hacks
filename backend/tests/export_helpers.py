@@ -29,8 +29,9 @@ G = 9.80665
 class FakeRepo:
     """The slice of `Repo` the export reads."""
 
-    def __init__(self, experiment, models=(), trials=(), trajectories=()):
+    def __init__(self, experiment, models=(), trials=(), trajectories=(), fits=()):
         self.experiment = experiment
+        self.fits = list(fits)
         self.models = {m.id: m for m in models}
         self.trials = list(trials)
         self.trajectories = list(trajectories)
@@ -40,6 +41,12 @@ class FakeRepo:
 
     def list_trials(self, experiment_id):
         return list(self.trials)
+
+    def list_models(self, experiment_id):
+        return list(self.models.values())
+
+    def list_fits(self, experiment_id):
+        return list(self.fits)
 
     def list_trajectories(self, trial_ids):
         return [t for t in self.trajectories if t.trial_id in trial_ids]

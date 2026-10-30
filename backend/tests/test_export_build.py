@@ -10,7 +10,6 @@ import pytest
 from ghostline.export import conversions as conv
 from ghostline.export.mapping import export_formats
 from ghostline.export.measured import measure
-from ghostline.export.snippet import render_pybullet
 from ghostline.export.stage import available_formats, build_export
 from ghostline.jobs.errors import StageError
 from ghostline.store.core_schemas import SimExport

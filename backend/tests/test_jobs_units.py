@@ -159,7 +159,8 @@ def test_there_is_a_stub_for_every_stage():
     }
 
 
-# Wired stages: measurement (jobs/measure.py), the physicist and reviewer, and the ghost.
+# Wired stages: measurement (jobs/measure.py), the physicist and reviewer, the ghost, and the
+# export and What-if. Only verify_export (the PyBullet replay check) is still a stub.
 WIRED = {
     "ingest",
     "analyze_scene",
@@ -171,6 +172,8 @@ WIRED = {
     "predict_ghost",
     "diagnose_revision",
     "rerun_model",
+    "build_export",
+    "simulate_custom_model",
 }
 
 
