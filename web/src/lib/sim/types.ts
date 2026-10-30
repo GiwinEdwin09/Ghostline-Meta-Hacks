@@ -2,9 +2,11 @@
  * Types shared by the TypeScript twins of the physics library (build-plan Part 10) and the
  * fixed-step RK4 integrator (Part 18).
  *
- * Conventions: SI units, angles in radians, `y` up. Parameter names follow the symbols in
- * Part 10 (`g`, `L_eff`, `gamma`, `kappa`, `mu_p`, `mu_k`, `beta`, `c_rr`, `e`, `e0`, `e1`,
- * `b`, `c`, `k`, `b_over_m`, `k_over_m`) so the Python library can use the same names.
+ * Conventions: SI units, angles in radians, `y` up. Parameter and initial-condition names are
+ * exactly those of the Python library in `backend/ghostline/physics/library` (`g`, `L`, `gamma`,
+ * `kappa`, `mu_p`, `mu_k`, `beta`, `c_rr`, `e`, `e0`, `e1`, `b`, `c`, `k`, `y0`, `vy0`, `theta0`,
+ * ...), with the same equations. `scripts/gen_sim_fixtures.py` writes the fixtures that
+ * `sim.parity.test.ts` checks them against.
  */
 
 export type SimSystem = "free_fall" | "pendulum" | "ramp" | "bounce" | "spin_down";
@@ -74,7 +76,7 @@ export interface SimContext {
   model_ref: string;
   /** Fitted physical parameters by library name. */
   params: Params;
-  /** Quantities held fixed in the fit (g, L_eff, alpha, ...). */
+  /** Quantities held fixed in the fit (g, L, alpha, ...). */
   fixed: Params;
   /** Trial 1's initial conditions. */
   initial: Params;

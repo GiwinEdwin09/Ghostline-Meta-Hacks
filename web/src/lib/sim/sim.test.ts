@@ -6,6 +6,7 @@ import {
   controlsFor,
   defaultControls,
   extrapolationWarnings,
+  getModel,
   instantExplanations,
   integrate,
   measuredPeriod,
@@ -39,20 +40,20 @@ function maxAbsError(
 
 describe("RK4 against closed forms", () => {
   it("free fall FF0, FF1 and FF2 match their closed forms", () => {
-    expect(maxAbsError(FF0, { g: 9.81 }, { y0: 2, v0: 1.5 }, 0.6)).toBeLessThan(1e-10);
-    expect(maxAbsError(FF1, { g: 9.81, b_over_m: 1.7 }, { y0: 2, v0: 1.5 }, 2)).toBeLessThan(1e-9);
-    expect(maxAbsError(FF2, { g: 9.81, k_over_m: 0.4 }, { y0: 5, v0: 0 }, 3)).toBeLessThan(1e-9);
+    expect(maxAbsError(FF0, { g: 9.81 }, { y0: 2, vy0: 1.5 }, 0.6)).toBeLessThan(1e-10);
+    expect(maxAbsError(FF1, { g: 9.81, b: 1.7 }, { y0: 2, vy0: 1.5 }, 2)).toBeLessThan(1e-9);
+    expect(maxAbsError(FF2, { g: 9.81, k: 0.4 }, { y0: 5, vy0: 0 }, 3)).toBeLessThan(1e-9);
   });
 
   it("FF1 and FF2 approach their terminal velocities", () => {
-    const r1 = integrate(FF1, { g: 9.81, b_over_m: 2 }, { y0: 0, v0: 0 }, { tEnd: 8 });
-    expect(Math.abs(r1.states.at(-1)![1])).toBeCloseTo(terminalVelocity("FF1", { g: 9.81, b_over_m: 2 })!, 5);
-    const r2 = integrate(FF2, { g: 9.81, k_over_m: 0.5 }, { y0: 0, v0: 0 }, { tEnd: 8 });
+    const r1 = integrate(FF1, { g: 9.81, b: 2 }, { y0: 0, vy0: 0 }, { tEnd: 8 });
+    expect(Math.abs(r1.states.at(-1)![1])).toBeCloseTo(terminalVelocity("FF1", { g: 9.81, b: 2 })!, 5);
+    const r2 = integrate(FF2, { g: 9.81, k: 0.5 }, { y0: 0, vy0: 0 }, { tEnd: 8 });
     expect(Math.abs(r2.states.at(-1)![1])).toBeCloseTo(Math.sqrt(9.81 / 0.5), 6);
   });
 
   it("the small-angle pendulum P0 matches theta0 cos(wt) + (omega0/w) sin(wt)", () => {
-    expect(maxAbsError(P0, { g: 9.81, L_eff: 0.62 }, { theta0: 0.2, omega0: 0.3 }, 10)).toBeLessThan(1e-7);
+    expect(maxAbsError(P0, { g: 9.81, L: 0.62 }, { theta0: 0.2, omega0: 0.3 }, 10)).toBeLessThan(1e-7);
   });
 
   it("every ramp model matches its constant-acceleration closed form", () => {
@@ -75,7 +76,7 @@ describe("RK4 against closed forms", () => {
   });
 
   it("converges at fourth order when the step is halved", () => {
-    const p = { g: 9.81, L_eff: 0.62 };
+    const p = { g: 9.81, L: 0.62 };
     const init = { theta0: 0.5, omega0: 0 };
     const coarse = maxAbsError(P0, p, init, 5, 1 / 30);
     const fine = maxAbsError(P0, p, init, 5, 1 / 60);
@@ -91,7 +92,7 @@ describe("pendulum", () => {
 
   it("conserves energy when undamped (P1)", () => {
     const theta0 = 60 * DEG;
-    const res = integrate(P1, { g, L_eff: L }, { theta0, omega0: 0 }, { tEnd: 60 });
+    const res = integrate(P1, { g, L: L }, { theta0, omega0: 0 }, { tEnd: 60 });
     const energy = (s: number[]) => 0.5 * L * L * s[1] * s[1] + g * L * (1 - Math.cos(s[0]));
     const e0 = energy(res.states[0]);
     const drift = Math.max(...res.states.map((s) => Math.abs(energy(s) - e0))) / e0;
@@ -99,7 +100,7 @@ describe("pendulum", () => {
   });
 
   it("loses energy monotonically with viscous damping (P2)", () => {
-    const res = integrate(P2, { g, L_eff: L, gamma: 0.1 }, { theta0: 0.6, omega0: 0 }, { tEnd: 30 });
+    const res = integrate(P2, { g, L: L, gamma: 0.1 }, { theta0: 0.6, omega0: 0 }, { tEnd: 30 });
     const energy = (s: number[]) => 0.5 * L * L * s[1] * s[1] + g * L * (1 - Math.cos(s[0]));
     let prev = Infinity;
     // Sample at the turning points so the comparison is between peaks.
@@ -114,7 +115,7 @@ describe("pendulum", () => {
 
   it("the nonlinear period matches the elliptic-integral formula", () => {
     for (const amp of [10, 38, 70]) {
-      const res = integrate(P1, { g, L_eff: L }, { theta0: amp * DEG, omega0: 0 }, { tEnd: 30 });
+      const res = integrate(P1, { g, L: L }, { theta0: amp * DEG, omega0: 0 }, { tEnd: 30 });
       const T = measuredPeriod(res.t, res.obs[0]);
       // Released from rest at +theta0, the first upward zero crossing happens 3/4 of a period in,
       // and consecutive crossings are one period apart.
@@ -200,9 +201,33 @@ describe("bounce events", () => {
   });
 });
 
+describe("legacy names", () => {
+  it("the mock data's old names give the same trajectories as the library's", () => {
+    const old = integrate(getModel("P2")!, { g: 9.79, L_eff: 0.62, gamma: 0.05 }, { theta0: 0.5, omega0: 0 }, { tEnd: 3 });
+    const now = integrate(P2, { g: 9.79, L: 0.62, gamma: 0.05 }, { theta0: 0.5, omega0: 0 }, { tEnd: 3 });
+    expect(old.obs[0]).toEqual(now.obs[0]);
+    const fall = integrate(getModel("FF1")!, { g: 9.81, b_over_m: 1.2 }, { y0: 2, v0: 1 }, { tEnd: 1 });
+    expect(fall.obs[0]).toEqual(integrate(FF1, { g: 9.81, b: 1.2 }, { y0: 2, vy0: 1 }, { tEnd: 1 }).obs[0]);
+    expect(getModel("FF1")!.closedForm!(0.5, { g: 9.81, b_over_m: 1.2 }, { y0: 2, v0: 1 })).toEqual(
+      FF1.closedForm!(0.5, { g: 9.81, b: 1.2 }, { y0: 2, vy0: 1 }),
+    );
+  });
+});
+
+describe("spin direction", () => {
+  it("a clockwise spinner turns the angle the other way and stops at the same time", () => {
+    const init = { phi0: 0.5, omega0: 20 };
+    const ccw = integrate(S1, { c: 2, direction: 1 }, init, { tEnd: 12 });
+    const cw = integrate(S1, { c: 2, direction: -1 }, init, { tEnd: 12 });
+    expect(cw.stoppedAt).toBeCloseTo(ccw.stoppedAt!, 9);
+    expect(cw.obs[0].at(-1)! - 0.5).toBeCloseTo(-(ccw.obs[0].at(-1)! - 0.5), 9);
+    expect(S1.closedForm!(3, { c: 2, direction: -1 }, init)[0]).toBeCloseTo(0.5 - (20 * 3 - 0.5 * 2 * 9), 12);
+  });
+});
+
 describe("free fall floor", () => {
   it("stops at the floor with the impact speed sqrt(2 g h)", () => {
-    const res = integrate(FF0, { g: 9.81 }, { y0: 1.2, v0: 0 }, { tEnd: 2, extraEvents: [floorEvent(0)] });
+    const res = integrate(FF0, { g: 9.81 }, { y0: 1.2, vy0: 0 }, { tEnd: 2, extraEvents: [floorEvent(0)] });
     expect(res.stoppedAt).toBeCloseTo(Math.sqrt((2 * 1.2) / 9.81), 9);
   });
 });
@@ -215,7 +240,7 @@ const pendulumCtx: SimContext = {
   system: "pendulum",
   model_ref: "P2",
   params: { g: 9.79, gamma: 0.052 },
-  fixed: { L_eff: 0.62 },
+  fixed: { L: 0.62 },
   initial: { theta0: 38 * DEG, omega0: 0 },
   measured_range: { amplitude_deg: [30, 40] },
   object: { name: "Steel nut", radius_m: 0.012, mass_kg: 0.03 },
@@ -225,7 +250,7 @@ const pendulumCtx: SimContext = {
 describe("what-if scenarios", () => {
   it("the default sliders reproduce the fitted model exactly", () => {
     const sc = buildScenario(pendulumCtx, defaultControls(pendulumCtx));
-    const direct = integrate(P2, { g: 9.79, L_eff: 0.62, gamma: 0.052 }, pendulumCtx.initial, { tEnd: sc.tEnd });
+    const direct = integrate(P2, { g: 9.79, L: 0.62, gamma: 0.052 }, pendulumCtx.initial, { tEnd: sc.tEnd });
     const res = runScenario(sc);
     expect(res.obs[0]).toEqual(direct.obs[0]);
   });

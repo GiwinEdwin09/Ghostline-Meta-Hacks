@@ -7,12 +7,14 @@ import type { ModelEvent, Params, SimModel } from "../types";
  *   B1  speed-dependent restitution  e = max(0, e0 - e1 |v|)
  *   B2  flights with quadratic drag, plus constant e
  *
- * Each impact reverses the velocity and scales it by e. When the rebound speed falls under
+ * Names and equations are those of `physics/library/bounce.py`; the floor is at y = 0 and
+ * restitution is capped at 0.999 there too. Each impact reverses the velocity and scales it by e. When the rebound speed falls under
  * REST_SPEED the ball is at rest on the floor (this also ends the infinite chain of ever
  * smaller bounces).
  */
 
-export const REST_SPEED = 0.02; // m/s
+const MAX_RESTITUTION = 0.999;
+export const REST_SPEED = 1e-3; // m/s, as in the library
 
 function impact(restitution: (vIn: number, p: Params) => number): ModelEvent {
   return {
@@ -20,7 +22,7 @@ function impact(restitution: (vIn: number, p: Params) => number): ModelEvent {
     fn: (s) => s[0],
     apply: (s, p) => {
       const vIn = Math.abs(s[1]);
-      const vOut = restitution(vIn, p) * vIn;
+      const vOut = Math.min(Math.max(restitution(vIn, p), 0), MAX_RESTITUTION) * vIn;
       if (vOut < REST_SPEED) return { state: [0, 0], stop: true };
       return { state: [0, vOut] };
     },
@@ -64,10 +66,10 @@ export const B2: SimModel = {
   ...base,
   id: "B2",
   name: "Quadratic drag with constant restitution",
-  paramNames: ["g", "e", "k_over_m"],
+  paramNames: ["g", "e", "k"],
   rhs: (_t, s, p, out) => {
     out[0] = s[1];
-    out[1] = -p.g - p.k_over_m * Math.abs(s[1]) * s[1];
+    out[1] = -p.g - p.k * Math.abs(s[1]) * s[1];
   },
   events: [impact((_v, p) => p.e)],
 };

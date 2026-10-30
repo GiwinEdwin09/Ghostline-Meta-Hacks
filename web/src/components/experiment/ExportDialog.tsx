@@ -8,7 +8,13 @@ import { fmtNum } from "@/lib/format";
 import { useResource } from "@/lib/hooks";
 import type { Experiment, ReplayCheck } from "@/lib/types";
 
-/** Export to simulator (build-plan Part 19): format, mass, the generated file and the replay check. */
+/**
+ * The PyBullet replay check (Part 19) is not built yet: `POST /export/verify` is a stub. Flip this
+ * on when it is, and the dialog shows the "Run replay check" section for the PyBullet format.
+ */
+const REPLAY_CHECK_BUILT = false;
+
+/** Export to simulator (build-plan Part 19): format, mass and the generated file. */
 export function ExportDialog({ exp, open, onClose }: { exp: Experiment; open: boolean; onClose: () => void }) {
   const formats = exp.export_formats;
   const [format, setFormat] = useState<"json" | "pybullet">(formats[0] ?? "json");
@@ -126,7 +132,7 @@ export function ExportDialog({ exp, open, onClose }: { exp: Experiment; open: bo
         )}
       </div>
 
-      {formats.includes("pybullet") ? (
+      {REPLAY_CHECK_BUILT && formats.includes("pybullet") ? (
         <div className="mt-5 border-t border-line pt-4">
           <p className="text-sm font-medium">Replay check</p>
           <p className="text-xs text-muted">Runs the same experiment in PyBullet and compares it with what you measured.</p>

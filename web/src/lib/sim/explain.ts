@@ -43,8 +43,8 @@ export function instantExplanations(
 
   switch (ctx.system) {
     case "pendulum": {
-      const LB = baseSc.params.L_eff;
-      const LW = whatSc.params.L_eff;
+      const LB = baseSc.params.L;
+      const LW = whatSc.params.L;
       if (changed(base, what, "g")) {
         const r = Math.sqrt(gB / gW);
         out.push(
