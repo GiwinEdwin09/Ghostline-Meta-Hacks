@@ -348,8 +348,9 @@ function Stage({ ctx, exp, base, what, playing }: { ctx: WhatIfContext; exp: Exp
         g.stroke();
       } else if (ctx.system === "ramp") {
         const a = what.sc.params.alpha;
+        const dir = what.sc.params.dir_x ?? 1; // -1 when the object slid to the left in the clip
         const len = (what.sc.geometry.sMax ?? 1.2) + 0.1;
-        const [bx, by] = toCanvas(ctx.anchor_m[0] + len * Math.cos(a), ctx.anchor_m[1] - len * Math.sin(a));
+        const [bx, by] = toCanvas(ctx.anchor_m[0] + dir * len * Math.cos(a), ctx.anchor_m[1] - len * Math.sin(a));
         g.beginPath();
         g.moveTo(ax, ay);
         g.lineTo(bx, by);

@@ -1,3 +1,4 @@
+import { modernInit, modernParams } from "./legacy";
 import type { IntegrateOptions, Params, SimEventRecord, SimModel, SimResult } from "./types";
 
 export const DEFAULT_DT = 1 / 240;
@@ -49,6 +50,8 @@ export function integrate(
   init: Params,
   options: IntegrateOptions,
 ): SimResult {
+  p = modernParams(p);
+  init = modernInit(model.system, init);
   const dt = options.dt ?? DEFAULT_DT;
   const events = [...(model.events ?? []), ...(options.extraEvents ?? [])];
   const nSteps = Math.max(1, Math.round(options.tEnd / dt));

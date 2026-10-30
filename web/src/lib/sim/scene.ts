@@ -33,7 +33,7 @@ export function poseAt(
   const [ax, ay] = anchor;
   switch (system) {
     case "pendulum": {
-      const L = sc.params.L_eff;
+      const L = sc.params.L;
       return { x: ax + L * Math.sin(state[0]), y: ay - L * Math.cos(state[0]), angle: state[0] };
     }
     case "free_fall":
@@ -41,7 +41,9 @@ export function poseAt(
       return { x: ax, y: ay + state[0], angle: 0 };
     case "ramp": {
       const a = sc.params.alpha;
-      return { x: ax + state[0] * Math.cos(a), y: ay - state[0] * Math.sin(a), angle: -a };
+      // `dir_x` is -1 when the object slid to the left in the clip.
+      const dir = sc.params.dir_x ?? 1;
+      return { x: ax + dir * state[0] * Math.cos(a), y: ay - state[0] * Math.sin(a), angle: -dir * a };
     }
     case "spin_down": {
       const r = sc.geometry.markerRadius ?? 0.03;

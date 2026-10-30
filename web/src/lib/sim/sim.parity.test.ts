@@ -6,10 +6,12 @@ import fixtures from "./__fixtures__/parity.json";
 /**
  * Parity with an independent integration (build-plan Part 18, "parity tests").
  *
- * `scripts/gen_sim_parity.py` integrates the same equations with scipy's DOP853 at 1e-12
- * tolerance and samples them on the simulator's grid. The TypeScript RK4 output has to agree
- * within 1e-6 relative to the size of the signal (relative to each sample would blow up at
- * zero crossings, which says nothing about accuracy).
+ * `scripts/gen_sim_fixtures.py` runs the Python library models (`backend/ghostline/physics/
+ * library`, closed form where there is one, else the ODE at 1e-12 tolerance) and samples them on
+ * the simulator's grid. The TypeScript RK4 output has to agree within 1e-6 relative to the size
+ * of the signal (relative to each sample would blow up at zero crossings, which says nothing
+ * about accuracy). The fixtures use the Python names, so a twin that renamed a parameter would
+ * fail here too.
  */
 
 interface Fixture {
@@ -28,6 +30,9 @@ describe("parity with scipy DOP853", () => {
     it(`${label} agrees within 1e-6`, () => {
       const model = getModel(fx.model);
       expect(model).toBeDefined();
+      // Every parameter and initial condition of the twin is one the Python model has.
+      for (const name of model!.paramNames) expect(fx.params).toHaveProperty(name);
+      for (const name of model!.initialNames) expect(fx.init).toHaveProperty(name);
       const res = integrate(model!, fx.params, fx.init, { tEnd: fx.t_end, dt: fx.dt });
       const scale = Math.max(...fx.obs.map((v) => Math.abs(v)), 1e-9);
       let worst = 0;

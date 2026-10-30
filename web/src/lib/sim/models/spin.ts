@@ -9,8 +9,10 @@ import type { ModelEvent, Params, SimModel } from "../types";
  *   S2  both            omega' = -c - b omega
  *   S3  Coulomb + air   omega' = -c - k omega^2
  *
- * b is in 1/s, c in rad/s^2 and k in s/rad. The spinner never reverses: the clamp ends the
- * simulation at the instant omega reaches zero (a stop event), and phi holds its final value.
+ * Names and equations are those of `physics/library/spin.py`: b is in 1/s, c in rad/s^2 and k
+ * in 1/rad. `omega` is the spin rate, never negative, and the angle turns by `direction` (+1 or
+ * -1) times it. The clamp ends the simulation at the instant omega reaches zero (a stop event),
+ * and phi holds its final value.
  */
 
 const clampEvent: ModelEvent = {
@@ -28,6 +30,8 @@ const base = {
   observe: (s: readonly number[]) => [s[0]],
   events: [clampEvent],
 };
+
+const sign = (p: Params) => (p.direction ?? 1) < 0 ? -1 : 1;
 
 function decel(model: SpinId, w: number, p: Params): number {
   switch (model) {
@@ -90,10 +94,10 @@ function make(id: SpinId, name: string, paramNames: string[]): SimModel {
     // No clamp in the right-hand side: the stop event ends the simulation at omega = 0, and a
     // rotor released at rest triggers it on the first step.
     rhs: (_t, s, p, out) => {
-      out[0] = s[1];
+      out[0] = sign(p) * s[1];
       out[1] = -decel(id, s[1], p);
     },
-    closedForm: (t, p, init) => [(init.phi0 ?? 0) + CLOSED[id](t, p, init.omega0 ?? 0).phi],
+    closedForm: (t, p, init) => [(init.phi0 ?? 0) + sign(p) * CLOSED[id](t, p, init.omega0 ?? 0).phi],
   };
 }
 

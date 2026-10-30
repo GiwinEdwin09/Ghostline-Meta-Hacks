@@ -3,15 +3,19 @@ import type { Params, SimModel } from "../types";
 /**
  * Pendulum in the angle theta (build-plan Part 10). State is [theta, omega].
  *
- *   P0  small-angle SHM                 theta'' = -(g/L_eff) theta        (closed form)
- *   P1  nonlinear                       theta'' = -(g/L_eff) sin(theta)
+ *   P0  small-angle SHM                 theta'' = -(g/L) theta        (closed form)
+ *   P1  nonlinear                       theta'' = -(g/L) sin(theta)
  *   P2  P1 + viscous damping            ... - gamma theta'
  *   P3  P1 + quadratic air drag         ... - kappa |theta'| theta'
  *   P4  P1 + Coulomb pivot friction     ... - mu_p tanh(theta'/eps)
  *
- * `gamma` is in 1/s, `kappa` in 1/rad, `mu_p` in rad/s^2 and `eps` (the width of the
- * smoothed Coulomb step) in rad/s.
+ * Names and equations are those of `physics/library/pendulum.py`. `L` is the effective length
+ * of the bob (the fit holds it fixed), `gamma` is in 1/s, `kappa` in 1/rad, `mu_p` in rad/s^2
+ * and `eps` (the width of the smoothed Coulomb step, 0.05 by default) in rad/s.
  */
+
+/** Width of the tanh that smooths the pivot-friction sign flip (rad/s), as in the library. */
+export const COULOMB_EPS = 0.05;
 
 const base = {
   system: "pendulum" as const,
@@ -26,13 +30,13 @@ export const P0: SimModel = {
   ...base,
   id: "P0",
   name: "Small-angle oscillator",
-  paramNames: ["g", "L_eff"],
+  paramNames: ["g", "L"],
   rhs: (_t, s, p, out) => {
     out[0] = s[1];
-    out[1] = -(p.g / p.L_eff) * s[0];
+    out[1] = -(p.g / p.L) * s[0];
   },
   closedForm: (t, p, init) => {
-    const w = Math.sqrt(p.g / p.L_eff);
+    const w = Math.sqrt(p.g / p.L);
     const th0 = init.theta0 ?? 0;
     const om0 = init.omega0 ?? 0;
     return [th0 * Math.cos(w * t) + (om0 / w) * Math.sin(w * t)];
@@ -43,10 +47,10 @@ export const P1: SimModel = {
   ...base,
   id: "P1",
   name: "Nonlinear pendulum",
-  paramNames: ["g", "L_eff"],
+  paramNames: ["g", "L"],
   rhs: (_t, s, p, out) => {
     out[0] = s[1];
-    out[1] = -(p.g / p.L_eff) * Math.sin(s[0]);
+    out[1] = -(p.g / p.L) * Math.sin(s[0]);
   },
 };
 
@@ -54,10 +58,10 @@ export const P2: SimModel = {
   ...base,
   id: "P2",
   name: "Nonlinear pendulum with viscous damping",
-  paramNames: ["g", "L_eff", "gamma"],
+  paramNames: ["g", "L", "gamma"],
   rhs: (_t, s, p, out) => {
     out[0] = s[1];
-    out[1] = -(p.g / p.L_eff) * Math.sin(s[0]) - p.gamma * s[1];
+    out[1] = -(p.g / p.L) * Math.sin(s[0]) - p.gamma * s[1];
   },
 };
 
@@ -65,10 +69,10 @@ export const P3: SimModel = {
   ...base,
   id: "P3",
   name: "Nonlinear pendulum with quadratic air drag",
-  paramNames: ["g", "L_eff", "kappa"],
+  paramNames: ["g", "L", "kappa"],
   rhs: (_t, s, p, out) => {
     out[0] = s[1];
-    out[1] = -(p.g / p.L_eff) * Math.sin(s[0]) - p.kappa * Math.abs(s[1]) * s[1];
+    out[1] = -(p.g / p.L) * Math.sin(s[0]) - p.kappa * Math.abs(s[1]) * s[1];
   },
 };
 
@@ -76,10 +80,10 @@ export const P4: SimModel = {
   ...base,
   id: "P4",
   name: "Nonlinear pendulum with pivot friction",
-  paramNames: ["g", "L_eff", "mu_p", "eps"],
+  paramNames: ["g", "L", "mu_p", "eps"],
   rhs: (_t, s, p, out) => {
     out[0] = s[1];
-    out[1] = -(p.g / p.L_eff) * Math.sin(s[0]) - p.mu_p * Math.tanh(s[1] / (p.eps || 0.02));
+    out[1] = -(p.g / p.L) * Math.sin(s[0]) - p.mu_p * Math.tanh(s[1] / (p.eps || COULOMB_EPS));
   },
 };
 

@@ -1,3 +1,4 @@
+import { modernContext } from "./legacy";
 import { integrate } from "./rk4";
 import { getModel } from "./models";
 import { floorEvent } from "./models/free-fall";
@@ -70,7 +71,8 @@ function rampShapeOf(ctx: SimContext): RampShape {
   return "solid_ball";
 }
 
-export function controlsFor(ctx: SimContext): ControlSpec[] {
+export function controlsFor(input: SimContext): ControlSpec[] {
+  const ctx = modernContext(input);
   const gravity: ControlSpec = {
     id: "g",
     label: "Gravity",
@@ -109,7 +111,7 @@ export function controlsFor(ctx: SimContext): ControlSpec[] {
         max: 200,
         step: 1,
         decimals: 0,
-        default: (ctx.fixed.L_eff ?? 0.6) * 100,
+        default: (ctx.fixed.L ?? 0.6) * 100,
       });
       list.push({
         id: "amplitude_deg",
@@ -284,7 +286,8 @@ function num(values: ControlValues, id: string, fallback: number): number {
 }
 
 /** Build the model, parameters and initial state for a set of control values. */
-export function buildScenario(ctx: SimContext, values: ControlValues): Scenario {
+export function buildScenario(input: SimContext, values: ControlValues): Scenario {
+  const ctx = modernContext(input);
   const base = getModel(ctx.model_ref);
   if (!base) throw new Error(`No TypeScript twin for model ${ctx.model_ref}`);
   const d = defaultControls(ctx);
@@ -304,7 +307,7 @@ export function buildScenario(ctx: SimContext, values: ControlValues): Scenario 
   switch (ctx.system) {
     case "pendulum": {
       const L = get("length_cm") / 100;
-      params.L_eff = L;
+      params.L = L;
       geometry.length = L;
       const massScale = 1 / Math.max(0.05, get("mass"));
       if (base.paramNames.includes("gamma")) params.gamma = (ctx.params.gamma ?? 0) * airScale * massScale;
@@ -324,10 +327,10 @@ export function buildScenario(ctx: SimContext, values: ControlValues): Scenario 
       const h = get("height_m");
       const defH = num(d, "height_m", h);
       init.y0 = h;
-      if (Math.abs(h - defH) > 1e-9) init.v0 = 0;
+      if (Math.abs(h - defH) > 1e-9) init.vy0 = 0;
       const massScale = 1 / Math.max(0.05, get("mass"));
-      if (base.paramNames.includes("b_over_m")) params.b_over_m = (ctx.params.b_over_m ?? 0) * airScale * massScale;
-      if (base.paramNames.includes("k_over_m")) params.k_over_m = (ctx.params.k_over_m ?? 0) * airScale * massScale;
+      if (base.paramNames.includes("b")) params.b = (ctx.params.b ?? 0) * airScale * massScale;
+      if (base.paramNames.includes("k")) params.k = (ctx.params.k ?? 0) * airScale * massScale;
       extra.push(floorEvent(0));
       tEnd = clamp(Math.sqrt((2 * h) / g) * 1.6 + 0.3, 0.6, 12);
       break;
@@ -368,7 +371,7 @@ export function buildScenario(ctx: SimContext, values: ControlValues): Scenario 
       } else {
         params.e = e;
       }
-      if (base.paramNames.includes("k_over_m")) params.k_over_m = (ctx.params.k_over_m ?? 0) * airScale;
+      if (base.paramNames.includes("k")) params.k = (ctx.params.k ?? 0) * airScale;
       tEnd = clamp(Math.sqrt((2 * h) / g) * (1 + 2 * e / Math.max(0.05, 1 - e)) + 0.5, 1.5, 20);
       break;
     }
@@ -468,10 +471,10 @@ export function computeReadouts(sc: Scenario, res: SimResult): Readout[] {
     case "free_fall": {
       const floor = res.events.find((e) => e.kind === "floor");
       const terminal =
-        m.id === "FF1" && p.b_over_m > 1e-9
-          ? p.g / p.b_over_m
-          : m.id === "FF2" && p.k_over_m > 1e-9
-            ? Math.sqrt(p.g / p.k_over_m)
+        m.id === "FF1" && p.b > 1e-9
+          ? p.g / p.b
+          : m.id === "FF2" && p.k > 1e-9
+            ? Math.sqrt(p.g / p.k)
             : null;
       return [
         { id: "fall_time", label: "Time to hit the floor", value: floor?.t ?? null, unit: "s", decimals: 3 },
@@ -552,7 +555,7 @@ function rampAccelOf(sc: Scenario): number {
 /** The exact undamped period, for the pendulum "T grows as sqrt(L/g)" explanation. */
 export function undampedPeriod(sc: Scenario): number | null {
   if (sc.model.system !== "pendulum") return null;
-  return exactPeriod(sc.params.g, sc.params.L_eff, sc.init.theta0 ?? 0.1);
+  return exactPeriod(sc.params.g, sc.params.L, sc.init.theta0 ?? 0.1);
 }
 
 /* ------------------------------------------------------------------------------------ */

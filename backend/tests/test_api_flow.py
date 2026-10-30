@@ -235,7 +235,7 @@ def test_an_upload_that_is_not_a_video_fails_ingest_for_good(unwired_client, pat
     assert not list(paths.experiment_dir(eid).glob("trials/*/original.*"))
 
 
-def test_export_and_simulate_say_501_until_they_are_wired(unwired_client, repo):
+def test_export_and_simulate_are_wired_to_the_export_and_what_if_modules(unwired_client, repo):
     from ghostline.store.records import ModelRecord
 
     eid = unwired_client.post("/api/experiments", json={"title": "x"}).json()["id"]
@@ -250,15 +250,17 @@ def test_export_and_simulate_say_501_until_they_are_wired(unwired_client, repo):
             "caveats": [],
             "narrative_md": "",
         },
+        winner_model_id="P1",
     )
-    repo.upsert_model(ModelRecord(experiment_id=eid, id="P1", name="n"))
+    repo.upsert_model(ModelRecord(experiment_id=eid, id="P1", name="n", library_ref="P1"))
 
     export = unwired_client.get(f"/api/experiments/{eid}/export")
     simulate = unwired_client.post(f"/api/experiments/{eid}/simulate", json={"model_id": "P1"})
 
-    assert (export.status_code, export.json()["code"]) == (501, "not_implemented")
-    assert (simulate.status_code, simulate.json()["code"]) == (501, "not_implemented")
-    assert "wired in wave 2" in export.json()["detail"]
+    # The small-angle-free pendulum has nothing a simulator takes, and the clip never measured
+    # the pendulum's length: both stages answer for themselves rather than with a 501.
+    assert (export.status_code, export.json()["code"]) == (422, "not_exportable")
+    assert (simulate.status_code, simulate.json()["code"]) == (422, "missing_setup")
 
 
 # --- simulate and export details --------------------------------------------------------------

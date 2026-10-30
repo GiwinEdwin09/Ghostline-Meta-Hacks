@@ -2,10 +2,11 @@
 
 The job handlers (jobs/handlers.py) and two API routes (export and simulate) call only these
 functions. The five measurement stages (ingest, analyze_scene, track_objects, calibrate and
-extract_trajectory) are wired to their modules in jobs/measure.py. The rest are stubs that raise
-NotImplementedError until the owning module is merged and wired: replace the body with a call
-into it and keep the signature, or change the signature and the one place in handlers.py that
-calls it. Tests replace stages with fakes (monkeypatch.setattr).
+extract_trajectory) are wired to their modules in jobs/measure.py. verify_export is the one stub
+left (the PyBullet replay check is not built); it raises NotImplementedError. To wire a stub,
+replace the body with a call into its module and keep the signature, or change the signature and
+the one place in handlers.py that calls it. Tests replace stages with fakes
+(monkeypatch.setattr).
 
 Rules for implementations:
 - Report with ctx.phase(...) and ctx.progress(...). Write notebook events with ctx.notebook.
@@ -19,7 +20,9 @@ Rules for implementations:
 
 from typing import Literal
 
+from ghostline import whatif
 from ghostline.agent import stage as agent_stage
+from ghostline.export import stage as export_stage
 from ghostline.ghost import stage as ghost_stage
 from ghostline.jobs import measure
 from ghostline.jobs.context import JobContext
@@ -154,7 +157,7 @@ def build_export(
     repo: Repo, experiment: Experiment, fmt: Literal["json", "pybullet"], mass_g: float | None
 ) -> SimExport | str:
     """Part 19 (export/): the SimExport for fmt='json', or the PyBullet snippet text."""
-    raise NotImplementedError(_WIRED_LATER)
+    return export_stage.build_export(repo, experiment, fmt, mass_g)
 
 
 def simulate_custom_model(
@@ -162,4 +165,4 @@ def simulate_custom_model(
 ) -> SimulateResult:
     """Part 18: run a model in the sandbox and return its trajectory. The API gives it
     SIMULATE_TIMEOUT_S (20 s) and answers 504 if it takes longer."""
-    raise NotImplementedError(_WIRED_LATER)
+    return whatif.simulate_custom_model(repo, experiment, model, request)
