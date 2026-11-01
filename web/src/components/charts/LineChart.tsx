@@ -7,14 +7,17 @@ import { fmtNum } from "@/lib/format";
 
 export const CHART_COLORS = {
   ghost: "#22d3ee",
-  data: "#e7ecf2",
-  muted: "#9aa9ba",
+  data: "#ece9e2",
+  muted: "#969fab",
   amber: "#fbbf24",
   red: "#f87171",
   green: "#34d399",
   violet: "#a78bfa",
-  grid: "#232d39",
+  grid: "#1d232c",
+  axis: "#343e4b",
 } as const;
+
+const TICK_FONT = "var(--font-mono), ui-monospace, monospace";
 
 export interface Series {
   id: string;
@@ -202,23 +205,24 @@ export function LineChart({
         {yTicks.map((v) => (
           <g key={`y${v}`}>
             <line x1={M.left} x2={M.left + plotW} y1={sy(v)} y2={sy(v)} stroke={CHART_COLORS.grid} />
-            <text x={M.left - 6} y={sy(v) + 4} textAnchor="end" fontSize="11" fill={CHART_COLORS.muted}>
+            <text x={M.left - 6} y={sy(v) + 4} textAnchor="end" fontSize="10.5" fontFamily={TICK_FONT} fill={CHART_COLORS.muted}>
               {fmtNum(v, 3)}
             </text>
           </g>
         ))}
+        <line x1={M.left} x2={M.left + plotW} y1={M.top + plotH + 0.5} y2={M.top + plotH + 0.5} stroke={CHART_COLORS.axis} />
         {xTicks.map((v) => (
-          <text key={`x${v}`} x={sx(v)} y={height - 10} textAnchor="middle" fontSize="11" fill={CHART_COLORS.muted}>
+          <text key={`x${v}`} x={sx(v)} y={height - 10} textAnchor="middle" fontSize="10.5" fontFamily={TICK_FONT} fill={CHART_COLORS.muted}>
             {fmtNum(v, 3)}
           </text>
         ))}
         {xLabel ? (
-          <text x={M.left + plotW} y={height - 1} textAnchor="end" fontSize="10.5" fill={CHART_COLORS.muted}>
+          <text x={M.left + plotW} y={height - 1} textAnchor="end" fontSize="10" fontFamily={TICK_FONT} fill={CHART_COLORS.muted}>
             {xLabel}
           </text>
         ) : null}
         {yLabel ? (
-          <text x={M.left} y={9} fontSize="10.5" fill={CHART_COLORS.muted}>
+          <text x={M.left} y={9} fontSize="10" fontFamily={TICK_FONT} fill={CHART_COLORS.muted}>
             {yLabel}
           </text>
         ) : null}
@@ -234,7 +238,7 @@ export function LineChart({
               ) : null}
             </g>
           ))}
-          {zeroLine ? <line x1={M.left} x2={M.left + plotW} y1={sy(0)} y2={sy(0)} stroke="#34414f" /> : null}
+          {zeroLine ? <line x1={M.left} x2={M.left + plotW} y1={sy(0)} y2={sy(0)} stroke={CHART_COLORS.axis} /> : null}
           {bands.map((b, i) => {
             const n = b.x.length;
             if (n === 0) return null;
@@ -301,7 +305,7 @@ export function LineChart({
             </g>
           ))}
           {cursor !== null && cursor !== undefined && cursor >= x0 && cursor <= x1 ? (
-            <line x1={sx(cursor)} x2={sx(cursor)} y1={M.top} y2={M.top + plotH} stroke="#fff" strokeOpacity={0.85} strokeWidth={1.2} />
+            <line x1={sx(cursor)} x2={sx(cursor)} y1={M.top} y2={M.top + plotH} stroke={CHART_COLORS.data} strokeOpacity={0.9} strokeWidth={1.2} />
           ) : null}
         </g>
 
@@ -322,7 +326,7 @@ export function LineChart({
         ) : null}
       </svg>
       {legend && series.length > 0 ? (
-        <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
           {series.map((s) => (
             <li key={s.id} className="inline-flex items-center gap-1.5">
               <span aria-hidden className="inline-block h-0.5 w-4 rounded" style={{ background: s.color, opacity: s.kind === "points" ? 0.6 : 1 }} />

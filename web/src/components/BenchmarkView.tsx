@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { useElementWidth, useResource } from "@/lib/hooks";
-import { Badge, Card, ConfidenceBadge, ErrorState, Notice, SectionTitle, Skeleton } from "@/components/ui";
+import { ArrowLink, Badge, Card, ConfidenceBadge, ErrorState, Notice, SectionTitle, Skeleton } from "@/components/ui";
 import { CHART_COLORS, niceTicks } from "@/components/charts/LineChart";
 import { USE_MOCKS, api } from "@/lib/api";
 import { SYSTEM_LABELS, fmtNum, fmtPm } from "@/lib/format";
@@ -29,14 +29,14 @@ export function BenchmarkView() {
   const scored = rows.filter((r) => !r.is_failure_case);
   const failures = rows.filter((r) => r.is_failure_case);
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       {USE_MOCKS ? (
         <Notice tone="amber" title="Demo data">
           These numbers are placeholders so the page can be judged without a back end. The real table comes from <code>bench/results.md</code>.
         </Notice>
       ) : null}
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line lg:grid-cols-4">
         <Tile label="Clips" value={String(summary.n_clips)} />
         <Tile label="95% intervals that contain the truth" value={`${Math.round(summary.coverage * 100)}%`} hint="Target: 90 to 98%" />
         <Tile label="Right physics chosen" value={`${Math.round(summary.model_selection_accuracy * 100)}%`} />
@@ -47,18 +47,20 @@ export function BenchmarkView() {
         <SectionTitle hint="Each dot is a clip; bars are 95% intervals">Measured against ground truth</SectionTitle>
         <Card>
           <ErrorPlot rows={scored} />
-          <p className="mt-2 text-xs text-muted">Relative error is (measured − truth) / truth. A good measurement sits near zero with a bar that crosses it.</p>
+          <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
+            Relative error is (measured − truth) / truth. A good measurement sits near zero with a bar that crosses the dashed truth line.
+          </p>
         </Card>
       </section>
 
       <section>
         <SectionTitle>All clips</SectionTitle>
-        <div className="overflow-x-auto rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full min-w-[46rem] text-sm">
-            <thead className="bg-surface text-left text-xs text-muted">
+            <thead className="bg-surface text-left">
               <tr>
                 {["Clip", "System", "Truth", "Measured", "z", "Interval has truth", "Model", "Confidence"].map((h) => (
-                  <th key={h} scope="col" className="px-3 py-2 font-medium">
+                  <th key={h} scope="col" className="eyebrow whitespace-nowrap px-3 py-2.5 font-medium">
                     {h}
                   </th>
                 ))}
@@ -66,28 +68,28 @@ export function BenchmarkView() {
             </thead>
             <tbody className="tabular-nums">
               {scored.map((r) => (
-                <tr key={r.clip_id} className="border-t border-line">
+                <tr key={r.clip_id} className="border-t border-line transition-colors hover:bg-surface/60">
                   <th scope="row" className="px-3 py-2 text-left font-normal">
                     {r.experiment_id ? (
-                      <Link href={`/e/${r.experiment_id}`} className="text-ghost underline-offset-4 hover:underline">
+                      <Link href={`/e/${r.experiment_id}`} className="whitespace-nowrap font-mono text-ghost underline-offset-4 hover:underline">
                         {r.clip_id}
                       </Link>
                     ) : (
-                      r.clip_id
+                      <span className="whitespace-nowrap font-mono">{r.clip_id}</span>
                     )}
                     <span className="block text-xs text-muted">{r.object}</span>
                   </th>
-                  <td className="px-3 py-2">{SYSTEM_LABELS[r.system]}</td>
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2">{SYSTEM_LABELS[r.system]}</td>
+                  <td className="px-3 py-2 font-mono text-[0.8125rem]">
                     {r.quantity} = {fmtNum(r.truth, 4)} {r.unit}
                     <span className="block text-xs text-muted">± {fmtNum(r.truth_sigma, 2)} · {r.truth_method}</span>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 font-mono text-[0.8125rem]">
                     {r.measured === null || r.ci_low === null || r.ci_high === null ? "–" : `${fmtPm(r.measured, (r.ci_high - r.ci_low) / 2)} ${r.unit}`}
                   </td>
-                  <td className="px-3 py-2">{r.z === null ? "–" : r.z.toFixed(1)}</td>
+                  <td className="px-3 py-2 font-mono text-[0.8125rem]">{r.z === null ? "–" : r.z.toFixed(1)}</td>
                   <td className="px-3 py-2">{mark(r.covered)}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 font-mono text-[0.8125rem]">
                     {r.model_selected ?? "–"} {r.model_correct === null ? null : mark(r.model_correct)}
                   </td>
                   <td className="px-3 py-2"><ConfidenceBadge level={r.confidence} /></td>
@@ -108,13 +110,13 @@ export function BenchmarkView() {
                   <Badge tone={r.failure_flagged ? "green" : "red"}>{r.failure_flagged ? "Flagged" : "Missed"}</Badge>
                   <ConfidenceBadge level={r.confidence} />
                 </div>
-                <p className="mt-2 text-sm font-medium">{r.object}</p>
+                <p className="mt-3 text-sm font-semibold">{r.object}</p>
                 <p className="text-sm text-muted">Expected: {r.failure_expected}</p>
-                {r.note ? <p className="mt-1 text-sm text-zinc-300">{r.note}</p> : null}
+                {r.note ? <p className="mt-1 text-sm text-fg-2">{r.note}</p> : null}
                 {r.experiment_id ? (
-                  <Link href={`/e/${r.experiment_id}`} className="mt-2 inline-flex min-h-11 items-center text-sm text-ghost">
-                    Open the experiment →
-                  </Link>
+                  <ArrowLink href={`/e/${r.experiment_id}`} className="mt-1">
+                    Open the experiment
+                  </ArrowLink>
                 ) : null}
               </Card>
             </li>
@@ -132,10 +134,10 @@ function mark(v: boolean | null) {
 
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
-      {hint ? <dd className="text-xs text-muted">{hint}</dd> : null}
+    <div className="bg-surface p-4 sm:p-5">
+      <dt className="eyebrow">{label}</dt>
+      <dd className="mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight">{value}</dd>
+      {hint ? <dd className="mt-1 text-xs text-muted">{hint}</dd> : null}
     </div>
   );
 }
@@ -163,8 +165,15 @@ function ErrorPlot({ rows }: { rows: BenchmarkRow[] }) {
       <svg width={width} height={h} role="img" aria-label="Relative error of every benchmark clip with its 95% interval">
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={sx(t)} x2={sx(t)} y1={6} y2={h - 22} stroke={t === 0 ? "#9aa9ba" : CHART_COLORS.grid} />
-            <text x={sx(t)} y={h - 6} textAnchor="middle" fontSize="11" fill={CHART_COLORS.muted}>
+            <line
+              x1={sx(t)}
+              x2={sx(t)}
+              y1={6}
+              y2={h - 22}
+              stroke={t === 0 ? CHART_COLORS.ghost : CHART_COLORS.grid}
+              strokeDasharray={t === 0 ? "4 4" : undefined}
+            />
+            <text x={sx(t)} y={h - 6} textAnchor="middle" fontSize="10.5" fontFamily="var(--font-mono)" fill={t === 0 ? CHART_COLORS.ghost : CHART_COLORS.muted}>
               {(t * 100).toFixed(0)}%
             </text>
           </g>
@@ -174,7 +183,7 @@ function ErrorPlot({ rows }: { rows: BenchmarkRow[] }) {
           const color = d.ok ? CHART_COLORS.green : CHART_COLORS.red;
           return (
             <g key={d.id}>
-              <text x={left - 8} y={y + 4} textAnchor="end" fontSize="11" fill={CHART_COLORS.muted}>
+              <text x={left - 8} y={y + 4} textAnchor="end" fontSize="10.5" fontFamily="var(--font-mono)" fill={CHART_COLORS.muted}>
                 {d.id}
               </text>
               <line x1={sx(d.lo)} x2={sx(d.hi)} y1={y} y2={y} stroke={color} strokeWidth={2} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, cn } from "@/components/ui";
+import { Button, Card, Notice, cn } from "@/components/ui";
 import { fmtDuration } from "@/lib/format";
 import { useElapsedSeconds } from "@/lib/hooks";
 import { PIPELINE_PHASES, PROVE_PHASES, type Job } from "@/lib/types";
@@ -45,61 +45,89 @@ export function PipelineStepper({
   const current = phaseToStep(job.phase ?? "", phases);
   const failed = job.status === "failed";
 
+  const doneCount = failed ? current : Math.min(current, phases.length);
   return (
-    <Card className="border-ghost/25">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="font-medium">
-          {failed ? "This run stopped" : mode === "prove" ? "Predicting your second trial" : "Analyzing your clip"}
-        </p>
-        <p className="text-sm tabular-nums text-muted">{active ? fmtDuration(elapsed) : null}</p>
-      </div>
-      {active ? <p className="mt-1 text-sm text-muted">You can leave this page. The analysis keeps running and will be here when you come back.</p> : null}
+    <Card className={cn("relative overflow-hidden", failed ? "border-red-400/30" : "border-ghost/30")}>
+      <div aria-hidden className="graph-paper pointer-events-none absolute inset-0 opacity-60 [mask-image:linear-gradient(to_bottom,black,transparent_60%)]" />
+      <div className="relative">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <p className="eyebrow">{failed ? "Run stopped" : active ? "Run in progress" : "Run"}</p>
+            <p className="mt-1 font-display text-2xl leading-tight">
+              {failed ? "This run stopped" : mode === "prove" ? "Predicting your second trial" : "Analyzing your clip"}
+            </p>
+          </div>
+          <p className="font-mono text-sm tabular-nums text-muted">
+            {active ? fmtDuration(elapsed) : null}
+            <span className="ml-3 text-fg-2">
+              {doneCount}/{phases.length}
+            </span>
+          </p>
+        </div>
+        {active ? <p className="mt-1 text-sm text-muted">You can leave this page. The analysis keeps running and will be here when you come back.</p> : null}
 
-      <ol className="mt-4 grid gap-1.5" aria-label="Pipeline progress">
-        {phases.map((p, i) => {
-          const state = failed && i === current ? "failed" : i < current ? "done" : i === current ? "current" : "todo";
-          return (
-            <li
+        <div aria-hidden className="mt-4 flex gap-1">
+          {phases.map((p, i) => (
+            <span
               key={p}
-              aria-current={state === "current" ? "step" : undefined}
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-lg px-3 py-1.5",
-                state === "current" && "bg-ghost/10",
-                state === "failed" && "bg-red-500/10",
+                "h-1 flex-1 rounded-full",
+                failed && i === current ? "bg-red-400" : i < current ? "bg-foreground/70" : i === current ? "bg-ghost" : "bg-line-strong",
               )}
-            >
-              <span
-                aria-hidden
+              style={i === current && !failed ? { animation: "ghost-pulse 1.4s ease-in-out infinite" } : undefined}
+            />
+          ))}
+        </div>
+
+        <ol className="mt-4 grid gap-1 sm:grid-cols-2" aria-label="Pipeline progress">
+          {phases.map((p, i) => {
+            const state = failed && i === current ? "failed" : i < current ? "done" : i === current ? "current" : "todo";
+            return (
+              <li
+                key={p}
+                aria-current={state === "current" ? "step" : undefined}
                 className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
-                  state === "done" && "border-emerald-400/60 bg-emerald-400/15 text-emerald-300",
-                  state === "current" && "border-ghost bg-ghost/20 text-ghost",
-                  state === "failed" && "border-red-400 bg-red-400/20 text-red-300",
-                  state === "todo" && "border-line-strong text-muted",
+                  "flex min-h-11 items-center gap-3 rounded-md px-2.5 py-1.5",
+                  state === "current" && "bg-ghost/[0.08]",
+                  state === "failed" && "bg-red-400/10",
                 )}
               >
-                {state === "done" ? "✓" : state === "failed" ? "!" : state === "current" ? <span className="size-2 rounded-full bg-ghost" style={{ animation: "ghost-pulse 1.4s ease-in-out infinite" }} /> : i + 1}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className={cn("block text-sm font-medium", state === "todo" && "text-muted")}>{LABELS[p]}</span>
-                {state === "current" ? <span className="block text-xs text-muted">{HINTS[p]}</span> : null}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full border font-mono text-[0.6875rem]",
+                    state === "done" && "border-foreground/40 bg-foreground/10 text-foreground",
+                    state === "current" && "border-ghost bg-ghost/15 text-ghost",
+                    state === "failed" && "border-red-400 bg-red-400/20 text-red-300",
+                    state === "todo" && "border-line-strong text-muted",
+                  )}
+                >
+                  {state === "done" ? "✓" : state === "failed" ? "!" : state === "current" ? <span className="size-2 rounded-full bg-ghost" style={{ animation: "ghost-pulse 1.4s ease-in-out infinite" }} /> : i + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block text-sm font-medium", state === "todo" && "text-muted", state === "done" && "text-fg-2")}>{LABELS[p]}</span>
+                  {state === "current" ? <span className="block text-xs text-muted">{HINTS[p]}</span> : null}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
 
-      {failed ? (
-        <div className="mt-4 rounded-lg border border-red-400/30 bg-red-400/5 p-3 text-sm" role="alert">
-          <p className="font-medium text-red-200">{job.error ?? "The worker stopped responding."}</p>
-          <p className="mt-1 text-zinc-300">Nothing was lost: finished steps are cached, so a retry picks up where it stopped.</p>
-          {onRetry ? (
-            <Button tone="secondary" className="mt-3" onClick={onRetry}>
-              Retry
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+        {failed ? (
+          <div className="mt-4" role="alert">
+            <Notice tone="red" title={job.error ?? "The worker stopped responding."}>
+              Nothing was lost: finished steps are cached, so a retry picks up where it stopped.
+              {onRetry ? (
+                <div className="mt-3">
+                  <Button tone="secondary" onClick={onRetry}>
+                    Retry
+                  </Button>
+                </div>
+              ) : null}
+            </Notice>
+          </div>
+        ) : null}
+      </div>
     </Card>
   );
 }

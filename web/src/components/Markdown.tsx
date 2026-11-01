@@ -26,7 +26,7 @@ function inline(text: string): ReactNode[] {
 export function Markdown({ text, className }: { text: string; className?: string }) {
   const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   return (
-    <div className={`prose-ghost text-sm leading-relaxed text-zinc-300 ${className ?? ""}`}>
+    <div className={`prose-ghost text-sm leading-relaxed text-fg-2 ${className ?? ""}`}>
       {blocks.map((block, i) => {
         if (block.startsWith("$$") && block.endsWith("$$")) {
           return <Tex key={i} latex={block.slice(2, -2).trim()} display />;

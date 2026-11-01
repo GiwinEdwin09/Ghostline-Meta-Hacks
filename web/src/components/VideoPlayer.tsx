@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode, type RefObject } from "react";
 
-import { cn } from "@/components/ui";
+import { buttonClass, cn } from "@/components/ui";
 
 /**
  * A video with the details Safari needs (playsInline, preload="metadata", a poster, a
@@ -20,6 +20,7 @@ export function VideoPlayer({
   children,
   className,
   label,
+  framed = false,
 }: {
   src: string;
   poster?: string;
@@ -32,6 +33,8 @@ export function VideoPlayer({
   children?: ReactNode;
   className?: string;
   label: string;
+  /** Cyan viewfinder corners, used where the video shows a ghost. */
+  framed?: boolean;
 }) {
   const inner = useRef<HTMLVideoElement | null>(null);
   const ref = videoRef ?? inner;
@@ -61,54 +64,56 @@ export function VideoPlayer({
 
   return (
     <div className={className}>
-      <div className="relative w-full overflow-hidden rounded-xl border border-line bg-black" style={{ aspectRatio: String(aspect) }}>
-        {failed > 0 && !loaded ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
-            <p className="text-sm text-zinc-300">This video couldn&apos;t be loaded. Check your connection and try again.</p>
-            <button
-              type="button"
-              className="min-h-11 rounded-lg border border-line-strong px-4 text-sm"
-              onClick={() => {
-                setFailed(0);
-                ref.current?.load();
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        ) : null}
-        <video
-          key={src}
-          ref={ref}
-          src={src}
-          poster={poster}
-          playsInline
-          preload="metadata"
-          controls
-          aria-label={label}
-          className="absolute inset-0 size-full object-contain"
-          onLoadedMetadata={(e) => {
-            setLoaded(true);
-            e.currentTarget.playbackRate = rate;
-            onDuration?.(e.currentTarget.duration);
-          }}
-          onPlay={() => setPlaying(true)}
-          onPause={(e) => {
-            setPlaying(false);
-            onTime?.(e.currentTarget.currentTime);
-          }}
-          onEnded={() => setPlaying(false)}
-          onSeeked={(e) => onTime?.(e.currentTarget.currentTime)}
-          onTimeUpdate={(e) => {
-            if (!playing) onTime?.(e.currentTarget.currentTime);
-          }}
-          onError={() => setFailed((n) => n + 1)}
-        />
-        {children ? <div className="pointer-events-none absolute inset-0">{children}</div> : null}
+      <div className={framed ? "viewfinder [--vf-color:rgb(34_211_238/0.7)]" : undefined}>
+        <div className="relative w-full overflow-hidden rounded-md border border-line bg-black" style={{ aspectRatio: String(aspect) }}>
+          {failed > 0 && !loaded ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black p-4 text-center">
+              <p className="text-sm text-fg-2">This video couldn&apos;t be loaded. Check your connection and try again.</p>
+              <button
+                type="button"
+                className={buttonClass("secondary")}
+                onClick={() => {
+                  setFailed(0);
+                  ref.current?.load();
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+          <video
+            key={src}
+            ref={ref}
+            src={src}
+            poster={poster}
+            playsInline
+            preload="metadata"
+            controls
+            aria-label={label}
+            className="absolute inset-0 size-full object-contain"
+            onLoadedMetadata={(e) => {
+              setLoaded(true);
+              e.currentTarget.playbackRate = rate;
+              onDuration?.(e.currentTarget.duration);
+            }}
+            onPlay={() => setPlaying(true)}
+            onPause={(e) => {
+              setPlaying(false);
+              onTime?.(e.currentTarget.currentTime);
+            }}
+            onEnded={() => setPlaying(false)}
+            onSeeked={(e) => onTime?.(e.currentTarget.currentTime)}
+            onTimeUpdate={(e) => {
+              if (!playing) onTime?.(e.currentTarget.currentTime);
+            }}
+            onError={() => setFailed((n) => n + 1)}
+          />
+          {children ? <div className="pointer-events-none absolute inset-0">{children}</div> : null}
+        </div>
       </div>
       {rates ? (
-        <div className="mt-2 flex items-center gap-1.5" role="group" aria-label="Playback speed">
-          <span className="mr-1 text-xs text-muted">Speed</span>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Playback speed">
+          <span className="eyebrow mr-1.5">Speed</span>
           {[1, 0.5, 0.25, 0.1].map((r) => (
             <button
               key={r}
@@ -116,8 +121,8 @@ export function VideoPlayer({
               aria-pressed={rate === r}
               onClick={() => choose(r)}
               className={cn(
-                "min-h-9 min-w-11 rounded-md border px-2 text-xs font-medium",
-                rate === r ? "border-ghost/60 bg-ghost/10 text-ghost" : "border-line text-muted hover:text-foreground",
+                "min-h-9 min-w-11 rounded-md border px-2 font-mono text-xs font-medium tabular-nums transition-colors",
+                rate === r ? "border-ghost/60 bg-ghost/10 text-cyan-100" : "border-line text-muted hover:border-line-strong hover:text-foreground",
               )}
             >
               {r}×

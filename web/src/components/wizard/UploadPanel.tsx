@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Button, ErrorState, Notice, cn } from "@/components/ui";
+import { Button, ErrorState, Notice, buttonClass, cn } from "@/components/ui";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
 import { fmtBytes, fmtDuration } from "@/lib/format";
@@ -37,6 +37,8 @@ export function UploadPanel({
   const [error, setError] = useState<unknown>(null);
   const [phase, setPhase] = useState<"idle" | "uploading" | "stopped" | "done">("idle");
   const [speed, setSpeed] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [notVideo, setNotVideo] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const samples = useRef<{ t: number; bytes: number }[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +49,32 @@ export function UploadPanel({
   );
 
   useEffect(() => () => controller.current?.abort(), []);
+
+  // A file dropped next to the drop zone would otherwise make the browser open it and leave the page.
+  useEffect(() => {
+    const block = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+    };
+    window.addEventListener("dragover", block);
+    window.addEventListener("drop", block);
+    return () => {
+      window.removeEventListener("dragover", block);
+      window.removeEventListener("drop", block);
+    };
+  }, []);
+
+  const uploading = phase === "uploading";
+  const pick = (f: File | null) => {
+    if (f && f.type && !f.type.startsWith("video/")) {
+      setNotVideo(f.name);
+      return;
+    }
+    setNotVideo(null);
+    setFile(f);
+    setProgress(null);
+    setError(null);
+    setPhase("idle");
+  };
 
   const tooBig = file !== null && file.size > MAX_FILE_BYTES;
   // 8 Mbit/s is a conservative cellular upload speed for the estimate before we have a real one.
@@ -102,38 +130,71 @@ export function UploadPanel({
         </Notice>
       ) : null}
 
-      <div className="rounded-xl border border-dashed border-line-strong p-5 text-center">
-        <input
-          ref={inputRef}
-          id={`file-${role}`}
-          type="file"
-          accept="video/*"
-          className="sr-only"
-          onChange={(e) => {
-            const f = e.target.files?.[0] ?? null;
-            setFile(f);
-            setProgress(null);
-            setError(null);
-            setPhase("idle");
-          }}
-        />
-        <label
-          htmlFor={`file-${role}`}
-          className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-line-strong bg-surface-2 px-5 text-sm font-medium hover:bg-zinc-800 focus-within:outline-2"
-        >
-          {file ? "Choose a different video" : "Choose a video"}
-        </label>
-        <p className="mt-2 text-xs text-muted">From your camera roll or your camera. Up to 1 GiB.</p>
-        {file ? (
-          <div className="mt-4 text-left text-sm">
-            <p className="break-all font-medium">{file.name}</p>
-            <p className="text-muted">
-              {fmtBytes(file.size)}
-              {estimate && phase === "idle" ? ` · about ${fmtDuration(estimate)} on a typical cellular upload` : ""}
-            </p>
-          </div>
-        ) : null}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!uploading) setDragging(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          if (!uploading) pick(e.dataTransfer.files?.[0] ?? null);
+        }}
+        className={cn(
+          "relative overflow-hidden rounded-md border border-dashed px-5 py-8 text-center transition-colors",
+          dragging ? "border-ghost bg-ghost/[0.06]" : "border-line-strong bg-surface/60",
+        )}
+      >
+        <div aria-hidden className="graph-paper pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
+        <div className="relative">
+          <svg viewBox="0 0 24 24" className="mx-auto mb-3 size-8 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="6" width="13" height="12" rx="1.5" />
+            <path d="m16 10 5-3v10l-5-3" />
+          </svg>
+          <input
+            ref={inputRef}
+            id={`file-${role}`}
+            type="file"
+            accept="video/*"
+            className="peer sr-only"
+            disabled={uploading}
+            onChange={(e) => pick(e.target.files?.[0] ?? null)}
+          />
+          <label
+            htmlFor={`file-${role}`}
+            className={cn(
+              buttonClass("secondary", "min-h-12 px-5"),
+              "cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ghost peer-disabled:cursor-not-allowed peer-disabled:opacity-45",
+            )}
+          >
+            {file ? "Choose a different video" : "Choose a video"}
+          </label>
+          <p className="mt-3 text-xs text-muted">
+            From your camera roll or your camera<span className="hidden sm:inline">, or drop a file here</span>. Up to 1 GiB.
+          </p>
+          {file ? (
+            <div className="mx-auto mt-5 flex max-w-md items-center gap-3 rounded-md border border-line bg-background/80 px-3.5 py-2.5 text-left text-sm">
+              <span aria-hidden className="size-2 shrink-0 rounded-full bg-ghost" />
+              <div className="min-w-0">
+                <p className="break-all font-medium">{file.name}</p>
+                <p className="font-mono text-xs text-muted">
+                  {fmtBytes(file.size)}
+                  {estimate && phase === "idle" ? ` · about ${fmtDuration(estimate)} on a typical cellular upload` : ""}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {notVideo ? (
+        <Notice tone="red" title="That file isn't a video">
+          {notVideo} can&apos;t be analyzed. Choose a video clip instead.
+        </Notice>
+      ) : null}
 
       {tooBig ? (
         <Notice tone="red" title="That clip is over 1 GiB">
@@ -153,11 +214,11 @@ export function UploadPanel({
             aria-valuemax={100}
             aria-valuenow={pct}
             aria-label="Upload progress"
-            className="h-3 overflow-hidden rounded-full bg-surface-2"
+            className="h-2 overflow-hidden rounded-full bg-surface-2"
           >
             <div className={cn("h-full rounded-full transition-[width] duration-200", phase === "stopped" ? "bg-amber-400" : "bg-ghost")} style={{ width: `${pct}%` }} />
           </div>
-          <p className="mt-2 text-sm tabular-nums">
+          <p className="mt-2 font-mono text-xs tabular-nums text-fg-2">
             {pct}% · {fmtBytes(progress.sentBytes)} of {fmtBytes(progress.totalBytes)}
             {phase === "uploading" && speed ? ` · ${fmtBytes(speed)}/s` : ""}
             {phase === "uploading" && remaining ? ` · about ${fmtDuration(remaining)} left` : ""}

@@ -1,38 +1,46 @@
 @import "tailwindcss";
 
 /*
- * Ghostline theme: a calm dark lab with one accent, the cyan of the ghost.
- * Secondary text uses --color-muted (about 7.5:1 on the background); never use zinc-500
- * for text that has to be read, it fails WCAG AA on this background.
+ * Ghostline theme: a lab notebook read under a dark-room lamp.
+ * Ink-dark paper, warm white type, hairline rules, graph-paper grids, and one accent, the cyan of
+ * the ghost, kept for predictions, links, selection and focus. Measurements are set in mono.
+ *
+ * Text contrast on --background: foreground 15.9:1, --color-fg-2 10.8:1, --color-muted 7.2:1.
+ * Never use a darker gray for text that has to be read.
  */
 :root {
   color-scheme: dark;
-  --background: #07090c;
-  --foreground: #e7ecf2;
+  --background: #0b0e13;
+  --foreground: #ece9e2;
+  --grid-minor: rgb(150 159 171 / 0.055);
+  --grid-major: rgb(150 159 171 / 0.11);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-surface: #0e1319;
-  --color-surface-2: #151c25;
-  --color-line: #232d39;
-  --color-line-strong: #34414f;
-  --color-muted: #9aa9ba;
+  --color-fg-2: #c4c2bb;
+  --color-surface: #10141a;
+  --color-surface-2: #171c24;
+  --color-line: #232a34;
+  --color-line-strong: #343e4b;
+  --color-muted: #969fab;
   --color-ghost: #22d3ee;
   --color-ghost-dim: #0e4a57;
   --color-wonder: #38bdf8;
   --color-spark: #a78bfa;
   --color-harness: #34d399;
   --color-sam: #fb923c;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-instrument-serif);
 }
 
 html {
   background: var(--background);
   -webkit-text-size-adjust: 100%;
-  scroll-padding-top: 4.5rem;
+  /* the sticky header plus the sticky experiment tabs */
+  scroll-padding-top: 7.5rem;
 }
 
 body {
@@ -40,6 +48,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: clip;
+  accent-color: var(--color-ghost);
 }
 
 :focus-visible {
@@ -52,6 +61,54 @@ body {
   background: rgb(34 211 238 / 0.3);
 }
 
+/* Small mono labels: section markers, figure captions, axis-style metadata. */
+@utility eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* Graph paper: a 20 px minor grid and a 100 px major grid, faded out toward the edges. */
+@utility graph-paper {
+  background-image:
+    linear-gradient(to right, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-minor) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-minor) 1px, transparent 1px);
+  background-size:
+    100px 100px,
+    100px 100px,
+    20px 20px,
+    20px 20px;
+  background-position: -1px -1px;
+}
+
+/* Viewfinder corners around a figure. The corners sit just outside the box. */
+@utility viewfinder {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    pointer-events: none;
+    --vf: var(--vf-color, var(--color-line-strong));
+    background:
+      linear-gradient(var(--vf), var(--vf)) top left / 14px 1.5px,
+      linear-gradient(var(--vf), var(--vf)) top left / 1.5px 14px,
+      linear-gradient(var(--vf), var(--vf)) top right / 14px 1.5px,
+      linear-gradient(var(--vf), var(--vf)) top right / 1.5px 14px,
+      linear-gradient(var(--vf), var(--vf)) bottom left / 14px 1.5px,
+      linear-gradient(var(--vf), var(--vf)) bottom left / 1.5px 14px,
+      linear-gradient(var(--vf), var(--vf)) bottom right / 14px 1.5px,
+      linear-gradient(var(--vf), var(--vf)) bottom right / 1.5px 14px;
+    background-repeat: no-repeat;
+  }
+}
+
 /* The mini markdown renderer and KaTeX output live inside these wrappers. */
 .prose-ghost p + p,
 .prose-ghost p + ul,
@@ -62,16 +119,19 @@ body {
   list-style: disc;
   padding-left: 1.25rem;
 }
+.prose-ghost li::marker {
+  color: var(--color-muted);
+}
 .prose-ghost code {
   font-family: var(--font-mono), monospace;
   font-size: 0.85em;
   background: var(--color-surface-2);
   border: 1px solid var(--color-line);
-  border-radius: 4px;
+  border-radius: 3px;
   padding: 0.05rem 0.3rem;
 }
 .prose-ghost strong {
-  color: #fff;
+  color: var(--foreground);
   font-weight: 600;
 }
 .katex-display {
@@ -92,8 +152,8 @@ body {
 }
 
 dialog::backdrop {
-  background: rgb(0 0 0 / 0.7);
-  backdrop-filter: blur(2px);
+  background: rgb(4 6 9 / 0.75);
+  backdrop-filter: blur(3px);
 }
 
 @keyframes ghost-pulse {
@@ -122,7 +182,27 @@ dialog::backdrop {
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
-  border-radius: 8px;
+  border-radius: 6px;
+}
+
+/* The landing page's trajectory: measured points appear one by one, then the ghost. */
+@keyframes strobe-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes dash-draw {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

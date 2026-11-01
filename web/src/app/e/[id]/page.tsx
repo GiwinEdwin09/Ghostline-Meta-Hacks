@@ -8,11 +8,11 @@ export const metadata: Metadata = { title: "Experiment" };
 
 function Fallback() {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-5 px-4 py-8">
+    <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6 sm:py-10">
       <Skeleton className="h-9 w-3/4" />
       <Skeleton className="h-6 w-1/2" />
       <Skeleton className="h-64 w-full" />
-    </div>
+    </main>
   );
 }
 

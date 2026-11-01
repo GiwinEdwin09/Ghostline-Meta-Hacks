@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Markdown } from "@/components/Markdown";
-import { Button, Card, ErrorState, Notice, SectionTitle, cn } from "@/components/ui";
+import { Badge, Button, Card, ErrorState, Notice, SectionTitle, cn } from "@/components/ui";
 import { api } from "@/lib/api";
 import { fmtClock } from "@/lib/format";
 import type { EventActor, EventKind, NotebookEvent } from "@/lib/types";
@@ -19,7 +19,7 @@ const ACTORS: Record<EventActor, { label: string; dot: string; text: string }> =
   spark_open: { label: "Muse Spark Open", dot: "bg-violet-400", text: "text-violet-300" },
   harness: { label: "Harness", dot: "bg-emerald-400", text: "text-emerald-300" },
   sam: { label: "SAM 3.1", dot: "bg-orange-400", text: "text-orange-300" },
-  system: { label: "System", dot: "bg-zinc-400", text: "text-zinc-300" },
+  system: { label: "System", dot: "bg-muted", text: "text-fg-2" },
   user: { label: "You", dot: "bg-pink-400", text: "text-pink-300" },
 };
 
@@ -103,11 +103,13 @@ export function NotebookTimeline({
                 <button
                   type="button"
                   onClick={() => jump(event.seq)}
-                  className="h-full w-full rounded-xl border border-ghost/25 bg-ghost/5 p-3.5 text-left hover:border-ghost/50"
+                  className="group h-full w-full rounded-md border border-line bg-surface p-3.5 text-left transition-colors hover:border-ghost/50 hover:bg-surface-2"
                 >
-                  <span className="text-xs font-medium uppercase tracking-wide text-ghost">{PIN_META[pin].title}</span>
+                  <span className="eyebrow text-ghost">{PIN_META[pin].title}</span>
                   <span className="mt-1 block text-sm font-medium text-foreground">{event.title}</span>
-                  <span className="mt-0.5 block text-xs text-muted">{PIN_META[pin].blurb}</span>
+                  <span className="mt-0.5 block text-xs text-muted">
+                    {PIN_META[pin].blurb} <span aria-hidden className="text-ghost opacity-0 transition-opacity group-hover:opacity-100">↓</span>
+                  </span>
                 </button>
               </li>
             ))}
@@ -116,7 +118,7 @@ export function NotebookTimeline({
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label="Notebook filter" className="inline-flex rounded-lg border border-line p-0.5">
+        <div role="group" aria-label="Notebook filter" className="inline-flex rounded-md border border-line bg-surface p-0.5">
           {(["key", "all"] as const).map((f) => (
             <button
               key={f}
@@ -124,20 +126,26 @@ export function NotebookTimeline({
               aria-pressed={filter === f}
               onClick={() => setFilter(f)}
               className={cn(
-                "min-h-10 rounded-md px-3.5 text-sm font-medium",
-                filter === f ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground",
+                "min-h-10 rounded-[5px] px-3.5 text-sm font-medium transition-colors",
+                filter === f ? "bg-surface-2 text-foreground shadow-[inset_0_0_0_1px_var(--color-line-strong)]" : "text-muted hover:text-foreground",
               )}
             >
               {f === "key" ? "Key decisions" : "Everything"}
             </button>
           ))}
         </div>
-        <p className="text-xs text-muted">
-          {shown.length} of {events.length} entries{live ? " · updating live" : ""}
+        <p className="font-mono text-xs text-muted">
+          {shown.length} of {events.length} entries
+          {live ? (
+            <span className="text-ghost">
+              {" "}
+              · <span style={{ animation: "ghost-pulse 1.4s ease-in-out infinite" }}>●</span> live
+            </span>
+          ) : null}
         </p>
       </div>
 
-      <ol className="relative space-y-4 border-l border-line pl-5">
+      <ol className="relative ml-1 space-y-6 border-l border-line pl-6">
         {shown.map((e) => (
           <EventItem key={e.seq} event={e} experimentId={experimentId} onChanged={onChanged} />
         ))}
@@ -185,41 +193,41 @@ function EventItem({
 
   return (
     <li id={`event-${e.seq}`} className="relative scroll-mt-24">
-      <span aria-hidden className={cn("absolute -left-[1.62rem] top-1.5 size-2.5 rounded-full ring-4 ring-background", actor.dot)} />
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-        <span className={cn("font-medium", actor.text)}>{actor.label}</span>
-        <span className="text-muted">· {KIND_LABEL[e.kind]}</span>
-        <time className="text-muted" dateTime={e.ts}>
-          · {fmtClock(e.ts)}
+      <span aria-hidden className={cn("absolute -left-[1.86rem] top-1 size-2.5 rounded-full ring-4 ring-background", actor.dot)} />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <span className={cn("font-semibold", actor.text)}>{actor.label}</span>
+        <span className="eyebrow">{KIND_LABEL[e.kind]}</span>
+        <time className="font-mono text-muted" dateTime={e.ts}>
+          {fmtClock(e.ts)}
         </time>
-        {pin ? <span className="rounded-full bg-ghost/15 px-2 py-0.5 text-[11px] font-medium text-ghost">{PIN_META[pin].title}</span> : null}
+        {pin ? <Badge tone="cyan">{PIN_META[pin].title}</Badge> : null}
       </div>
-      <h3 className="mt-0.5 text-sm font-semibold text-foreground">{e.title}</h3>
+      <h3 className="mt-1 text-[0.95rem] font-semibold text-foreground">{e.title}</h3>
       {e.body_md ? <Markdown text={e.body_md} className="mt-1.5" /> : null}
 
       <div className="mt-1 flex flex-wrap gap-x-3">
         {Object.keys(e.data).length > 0 ? (
-          <button type="button" aria-expanded={raw} onClick={() => setRaw((v) => !v)} className="min-h-9 text-xs font-medium text-muted hover:text-foreground">
-            {raw ? "Hide raw details" : "Raw details"}
+          <button type="button" aria-expanded={raw} onClick={() => setRaw((v) => !v)} className="min-h-9 font-mono text-xs font-medium text-muted hover:text-foreground">
+            {raw ? "− hide raw" : "+ raw details"}
           </button>
         ) : null}
         {canRerun ? (
-          <button type="button" aria-expanded={rerun} onClick={() => setRerun((v) => !v)} className="min-h-9 text-xs font-medium text-ghost">
-            Re-run
+          <button type="button" aria-expanded={rerun} onClick={() => setRerun((v) => !v)} className="min-h-9 font-mono text-xs font-medium text-ghost hover:text-cyan-200">
+            ↻ re-run
           </button>
         ) : null}
       </div>
 
       {raw ? (
-        <pre className="mt-1 max-h-72 overflow-auto rounded-lg border border-line bg-background p-3 font-mono text-xs leading-relaxed text-zinc-300">
+        <pre className="mt-1 max-h-72 overflow-auto rounded-md border border-line bg-surface p-3 font-mono text-xs leading-relaxed text-fg-2">
           {JSON.stringify(e.data, null, 2)}
         </pre>
       ) : null}
 
       {rerun ? (
-        <div className="mt-2 rounded-lg border border-line bg-surface p-3">
+        <div className="mt-2 rounded-md border border-line bg-surface p-4">
           <label className="block text-sm font-medium" htmlFor={`split-${e.seq}`}>
-            Fit on the first {split}% of the motion, forecast the rest
+            Fit on the first <span className="font-mono text-ghost">{split}%</span> of the motion, forecast the rest
           </label>
           <input
             id={`split-${e.seq}`}
@@ -229,9 +237,9 @@ function EventItem({
             step={5}
             value={split}
             onChange={(ev) => setSplit(Number(ev.target.value))}
-            className="mt-2 h-11 w-full accent-cyan-400"
+            className="mt-2 h-11 w-full accent-ghost"
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button tone="primary" onClick={submit} disabled={busy}>
               {busy ? "Re-running…" : `Re-run ${modelId}`}
             </Button>
