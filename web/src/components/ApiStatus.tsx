@@ -23,11 +23,13 @@ export function ApiStatus() {
   }, []);
 
   return (
-    <p className="text-sm text-zinc-400">
+    <p className="eyebrow inline-flex items-center gap-2" role="status">
       <span
-        className={`mr-2 inline-block size-2 rounded-full ${
-          status === "online" ? "bg-cyan-400" : status === "offline" ? "bg-red-500" : "bg-zinc-500"
+        aria-hidden
+        className={`inline-block size-2 rounded-full ${
+          status === "online" ? "bg-emerald-400" : status === "offline" ? "bg-red-400" : "bg-muted"
         }`}
+        style={status === "checking" ? { animation: "ghost-pulse 1.4s ease-in-out infinite" } : undefined}
       />
       {LABELS[status]}
     </p>

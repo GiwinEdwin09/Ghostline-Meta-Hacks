@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { GhostPlayer } from "@/components/GhostPlayer";
 import { PipelineStepper } from "@/components/PipelineStepper";
-import { Button, Card, ErrorState, Notice, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, Card, ErrorState, Notice, Skeleton } from "@/components/ui";
 import { UploadPanel } from "@/components/wizard/UploadPanel";
 import { api } from "@/lib/api";
 import { isJobActive } from "@/lib/hooks";
@@ -39,7 +39,7 @@ export function ProveTab({ exp, job, onChanged }: { exp: Experiment; job: Job | 
   if (exp.ghosts.length > 0) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-zinc-300">
+        <p className="max-w-3xl text-sm leading-relaxed text-fg-2">
           A second trial, with the law frozen from trial 1. Only the starting position and speed were fitted, to the launch window; everything after it is a pure prediction.
         </p>
         <GhostPlayer
@@ -58,9 +58,11 @@ export function ProveTab({ exp, job, onChanged }: { exp: Experiment; job: Job | 
   const ready = proveTrial && (proveTrial.status === "ready" || proveTrial.status === "tracked");
   return (
     <div className="space-y-5">
-      <Card>
-        <SectionTitle>Make a prediction, then check it</SectionTitle>
-        <p className="text-sm text-zinc-300">
+      <Card className="relative overflow-hidden">
+        <div aria-hidden className="graph-paper pointer-events-none absolute inset-0 opacity-70 [mask-image:linear-gradient(to_left,black,transparent_70%)]" />
+        <p className="eyebrow relative">Trial 2</p>
+        <h2 className="relative mt-1.5 font-display text-3xl leading-tight">Make a prediction, then check it</h2>
+        <p className="relative mt-2 max-w-3xl text-sm leading-relaxed text-fg-2">
           Film a second trial with the same setup and any starting conditions: a different swing height, a harder flick. Ghostline freezes the law it found, fits only where the object
           starts, and draws a ghost where the law says it will go. Then it measures how far reality drifts from the ghost.
         </p>

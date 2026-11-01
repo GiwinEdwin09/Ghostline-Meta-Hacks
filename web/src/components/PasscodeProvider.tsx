@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { registerPasscodePrompter } from "@/lib/passcode";
-import { Button, Dialog } from "@/components/ui";
+import { Button, Dialog, cn, inputClass } from "@/components/ui";
 
 /**
  * Asks for the write-routes passcode when the API needs one (build-plan Parts 21, 24).
@@ -43,7 +43,7 @@ export function PasscodeProvider({ children }: { children: ReactNode }) {
             finish(value.trim() || null);
           }}
         >
-          <p className="text-sm text-zinc-300">
+          <p className="text-sm leading-relaxed text-fg-2">
             {request?.reason === "rejected"
               ? "That passcode didn't work. Check the submission notes and try again."
               : "Starting an analysis costs real compute, so it needs the passcode from the submission notes. Reading the examples never does."}
@@ -59,7 +59,8 @@ export function PasscodeProvider({ children }: { children: ReactNode }) {
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="mt-1.5 h-11 w-full rounded-lg border border-line-strong bg-background px-3 text-base text-foreground"
+            aria-invalid={request?.reason === "rejected" && value === "" ? true : undefined}
+            className={cn(inputClass, "mt-1.5 h-11 w-full font-mono")}
           />
           <div className="mt-5 flex justify-end gap-2">
             <Button tone="ghost" onClick={() => finish(null)}>

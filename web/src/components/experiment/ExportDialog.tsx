@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button, Dialog, ErrorState, Notice, Skeleton, cn } from "@/components/ui";
+import { Button, Dialog, ErrorState, Notice, Skeleton, chipClass, inputClass, cn } from "@/components/ui";
 import { api } from "@/lib/api";
 import { fmtNum } from "@/lib/format";
 import { useResource } from "@/lib/hooks";
@@ -69,30 +69,27 @@ export function ExportDialog({ exp, open, onClose }: { exp: Experiment; open: bo
 
   return (
     <Dialog open={open} onClose={onClose} title="Export to simulator">
-      <p className="text-sm text-zinc-300">
+      <p className="text-sm leading-relaxed text-fg-2">
         The measured parameters, with their 95% intervals, in a file a robotics simulator can load. Intervals cover measurement
         uncertainty only; part-to-part variation needs wider ranges.
       </p>
 
-      <fieldset className="mt-4">
-        <legend className="text-sm font-medium">Format</legend>
+      <fieldset className="mt-5">
+        <legend className="eyebrow">Format</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {formats.map((f) => (
             <label
               key={f}
-              className={cn(
-                "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3.5 text-sm",
-                format === f ? "border-ghost bg-ghost/10" : "border-line",
-              )}
+              className={chipClass(format === f)}
             >
-              <input type="radio" name="fmt" className="size-4 accent-cyan-400" checked={format === f} onChange={() => setFormat(f)} />
+              <input type="radio" name="fmt" className="size-4 accent-ghost" checked={format === f} onChange={() => setFormat(f)} />
               {f === "json" ? "Ghostline JSON" : "PyBullet snippet"}
             </label>
           ))}
         </div>
       </fieldset>
 
-      <div className="mt-4">
+      <div className="mt-5">
         <label htmlFor="mass" className="text-sm font-medium">
           Object mass in grams (optional)
         </label>
@@ -103,7 +100,7 @@ export function ExportDialog({ exp, open, onClose }: { exp: Experiment; open: bo
           value={massG}
           onChange={(e) => setMassG(e.target.value)}
           aria-invalid={!massOk}
-          className="mt-1.5 h-11 w-36 rounded-lg border border-line-strong bg-background px-3 text-base"
+          className={cn(inputClass, "mt-1.5 h-11 w-36 font-mono")}
         />
         {!massOk ? <p className="mt-1 text-xs text-red-300">Enter a number greater than zero.</p> : null}
       </div>
@@ -118,7 +115,7 @@ export function ExportDialog({ exp, open, onClose }: { exp: Experiment; open: bo
             <pre
               tabIndex={0}
               aria-label="Generated file"
-              className="max-h-64 overflow-auto rounded-lg border border-line bg-background p-3 font-mono text-xs leading-relaxed text-zinc-200"
+              className="max-h-64 overflow-auto rounded-md border border-line bg-background p-3 font-mono text-xs leading-relaxed text-fg-2"
             >
               {file.data.text}
             </pre>

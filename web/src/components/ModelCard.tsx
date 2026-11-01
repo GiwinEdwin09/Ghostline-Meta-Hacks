@@ -37,24 +37,24 @@ export function RmseBar({
   return (
     <div>
       <div
-        className="relative h-5 rounded bg-surface-2"
+        className="relative h-4 rounded-sm bg-surface-2"
         role="img"
         aria-label={`Held-out error ${fmtNum(value)} ${unit}, interval ${fmtNum(ci[0])} to ${fmtNum(ci[1])}${off ? ", off the scale" : ""}`}
       >
-        <div className={cn("absolute inset-y-0 left-0 rounded", color)} style={{ width: `${Math.max(1.5, pct(value))}%`, opacity: 0.85 }} />
+        <div className={cn("absolute inset-y-0 left-0 rounded-sm", color)} style={{ width: `${Math.max(1.5, pct(value))}%`, opacity: 0.8 }} />
         {!off ? (
           <>
-            <div className="absolute top-1/2 h-px bg-white" style={{ left: `${pct(ci[0])}%`, width: `${Math.max(0, pct(ci[1]) - pct(ci[0]))}%` }} />
-            <div className="absolute top-1 bottom-1 w-px bg-white" style={{ left: `${pct(ci[0])}%` }} />
-            <div className="absolute top-1 bottom-1 w-px bg-white" style={{ left: `${pct(ci[1])}%` }} />
+            <div className="absolute top-1/2 h-px bg-foreground" style={{ left: `${pct(ci[0])}%`, width: `${Math.max(0, pct(ci[1]) - pct(ci[0]))}%` }} />
+            <div className="absolute inset-y-0.5 w-px bg-foreground" style={{ left: `${pct(ci[0])}%` }} />
+            <div className="absolute inset-y-0.5 w-px bg-foreground" style={{ left: `${pct(ci[1])}%` }} />
           </>
         ) : (
-          <span aria-hidden className="absolute right-1 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-950">
+          <span aria-hidden className="absolute right-1 top-1/2 -translate-y-1/2 text-xs font-bold text-background">
             ▸▸
           </span>
         )}
       </div>
-      <p className="mt-1 text-xs tabular-nums text-muted">
+      <p className="mt-1.5 font-mono text-xs tabular-nums text-muted">
         {fmtNum(value)} {unit}
         <span className="opacity-80">
           {" "}
@@ -80,34 +80,32 @@ export function ModelCard({
   const st = STATUS[model.status];
   const tone = model.status === "winner" ? "good" : model.status === "tied" ? "tie" : "bad";
   return (
-    <Card as="article" className={cn(model.status === "winner" && "border-emerald-400/40")}>
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-base font-semibold">
-          <span className="mr-2 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-muted">{model.id}</span>
-          {model.name}
-        </h3>
+    <Card as="article" className={cn(model.status === "winner" && "border-emerald-400/40", model.status === "rejected" && "bg-surface/60")}>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-mono text-xs text-muted">{model.id}</span>
+        <h3 className={cn("font-display text-[1.6rem] leading-tight", model.status === "rejected" && "text-fg-2")}>{model.name}</h3>
       </div>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-2.5 flex flex-wrap gap-2">
         <Badge tone={st.tone}>{st.label}</Badge>
         {model.prior_rank === 1 ? <Badge tone="violet">Wonder&apos;s first guess</Badge> : null}
         {model.source === "wonder" ? <Badge>Written by Wonder</Badge> : null}
         {fit ? <Badge>Lowest on {fit.splits_won} of 3 splits</Badge> : null}
       </div>
-      <p className="mt-3 text-sm text-zinc-300">{model.mechanism}</p>
-      <div className="mt-2 overflow-x-auto">
+      <p className="mt-3 text-sm leading-relaxed text-fg-2">{model.mechanism}</p>
+      <div className="mt-3 overflow-x-auto rounded-md border border-line bg-background/60 px-3 py-1">
         <Tex latex={model.equations_latex} display />
       </div>
 
       {fit ? (
-        <div className="mt-3">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">Held-out error (forecast of the last 35%)</p>
+        <div className="mt-4">
+          <p className="eyebrow mb-2">Held-out error · forecast of the last 35%</p>
           <RmseBar value={fit.heldout_rmse} ci={fit.heldout_ci} max={barMax} unit={fit.rmse_unit} tone={tone} />
         </div>
       ) : null}
 
       {model.rejection_reason ? (
-        <p className="mt-3 rounded-lg border border-red-400/25 bg-red-400/5 p-3 text-sm text-zinc-200">
-          <span className="font-medium text-red-300">Why it was rejected. </span>
+        <p className="mt-4 rounded-r-md border-l-2 border-red-400 bg-red-400/[0.06] px-3.5 py-3 text-sm text-fg-2">
+          <span className="font-medium text-red-200">Why it was rejected. </span>
           {model.rejection_reason}
         </p>
       ) : null}
@@ -116,7 +114,7 @@ export function ModelCard({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-ghost"
+        className="-mb-2 mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-ghost hover:text-cyan-200"
       >
         {open ? "Hide details" : "Parameters, plots and diagnostics"}
         <svg viewBox="0 0 24 24" className={cn("size-4 transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -125,20 +123,20 @@ export function ModelCard({
       </button>
 
       {open && fit ? (
-        <div className="mt-2 space-y-4 border-t border-line pt-4">
+        <div className="mt-4 space-y-5 border-t border-line pt-4">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[22rem] text-sm">
               <thead>
-                <tr className="text-left text-xs text-muted">
-                  <th className="pb-1 font-medium">Parameter</th>
-                  <th className="pb-1 font-medium">Value</th>
-                  <th className="pb-1 font-medium">95% interval</th>
+                <tr className="text-left">
+                  <th className="eyebrow pb-2 font-medium">Parameter</th>
+                  <th className="eyebrow pb-2 font-medium">Value</th>
+                  <th className="eyebrow pb-2 font-medium">95% interval</th>
                 </tr>
               </thead>
-              <tbody className="tabular-nums">
+              <tbody className="font-mono text-[0.8125rem] tabular-nums">
                 {fit.params.map((p) => (
                   <tr key={p.name} className="border-t border-line">
-                    <td className="py-1.5 pr-3">
+                    <td className="py-1.5 pr-3 font-sans text-sm">
                       {p.label}
                       {p.at_bound ? <span className="ml-1.5 text-xs text-amber-300">at bound</span> : null}
                     </td>
@@ -154,7 +152,7 @@ export function ModelCard({
             </table>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
             <Metric label="Training error" value={`${fmtNum(fit.train_rmse)} ${fit.rmse_unit}`} />
             <Metric label="Error / motion range" value={`${(fit.nrmse * 100).toFixed(fit.nrmse < 0.01 ? 2 : 1)}%`} />
             <Metric
@@ -176,10 +174,10 @@ export function ModelCard({
           {fit.plot_urls.fit ? (
             <div className="space-y-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resolveMedia(fit.plot_urls.fit)} alt={`${model.name}: data and fit`} className="w-full rounded-lg border border-line" loading="lazy" />
+              <img src={resolveMedia(fit.plot_urls.fit)} alt={`${model.name}: data and fit`} className="w-full rounded-md border border-line" loading="lazy" />
               {fit.plot_urls.residuals ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={resolveMedia(fit.plot_urls.residuals)} alt={`${model.name}: residuals`} className="w-full rounded-lg border border-line" loading="lazy" />
+                <img src={resolveMedia(fit.plot_urls.residuals)} alt={`${model.name}: residuals`} className="w-full rounded-md border border-line" loading="lazy" />
               ) : null}
             </div>
           ) : fit.series ? (
@@ -187,8 +185,8 @@ export function ModelCard({
           ) : null}
 
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">What would refute it</p>
-            <p className="mt-1 text-sm text-zinc-300">{model.refuting_signature}</p>
+            <p className="eyebrow">What would refute it</p>
+            <p className="mt-1 text-sm text-fg-2">{model.refuting_signature}</p>
           </div>
         </div>
       ) : null}
@@ -200,7 +198,7 @@ function Metric({ label, value, warn }: { label: string; value: string; warn?: b
   return (
     <div>
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className={cn("tabular-nums", warn && "text-amber-300")}>{value}</dd>
+      <dd className={cn("mt-0.5 font-mono text-[0.8125rem] tabular-nums", warn && "text-amber-300")}>{value}</dd>
     </div>
   );
 }

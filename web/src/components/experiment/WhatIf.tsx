@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CHART_COLORS, LineChart } from "@/components/charts/LineChart";
-import { Button, Card, ErrorState, Notice, SectionTitle, cn } from "@/components/ui";
+import { Button, Card, ErrorState, Notice, SectionTitle, chipClass, cn } from "@/components/ui";
 import { api, resolveMedia } from "@/lib/api";
 import { useElementWidth } from "@/lib/hooks";
 import { fmtNum } from "@/lib/format";
@@ -98,8 +98,8 @@ function LocalWhatIf({ exp, ctx }: { exp: Experiment; ctx: WhatIfContext }) {
   const obsUnit = ctx.system === "spin_down" || ctx.system === "pendulum" ? "rad" : "m";
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-zinc-300">
+    <div className="space-y-6">
+      <p className="max-w-3xl text-sm leading-relaxed text-fg-2">
         Change the world and watch <span className="font-medium text-foreground">your own {ctx.object.name.toLowerCase()}</span> follow the law you measured.
         The cyan ghost is the fitted model; the amber one is your what-if.
       </p>
@@ -107,7 +107,8 @@ function LocalWhatIf({ exp, ctx }: { exp: Experiment; ctx: WhatIfContext }) {
       <Stage ctx={ctx} exp={exp} base={base} what={what} playing={playing} />
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setPlaying((p) => !p)} aria-pressed={playing}>
+        <Button onClick={() => setPlaying((p) => !p)} aria-pressed={playing} className="min-w-28">
+          <span aria-hidden className="font-mono text-xs">{playing ? "❚❚" : "▶"}</span>
           {playing ? "Pause" : "Play"}
         </Button>
         <Button tone="ghost" onClick={() => setValues(defaults)} disabled={isDefault}>
@@ -135,18 +136,18 @@ function LocalWhatIf({ exp, ctx }: { exp: Experiment; ctx: WhatIfContext }) {
             <SectionTitle>What changes</SectionTitle>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-muted">
-                  <th className="pb-1 font-medium" />
-                  <th className="pb-1 font-medium" style={{ color: BASE_COLOR }}>Measured</th>
-                  <th className="pb-1 font-medium" style={{ color: WHAT_COLOR }}>What if</th>
+                <tr className="text-left">
+                  <th className="pb-2" />
+                  <th className="eyebrow pb-2 font-medium" style={{ color: BASE_COLOR }}>Measured</th>
+                  <th className="eyebrow pb-2 font-medium" style={{ color: WHAT_COLOR }}>What if</th>
                 </tr>
               </thead>
-              <tbody className="tabular-nums">
+              <tbody className="font-mono text-[0.8125rem] tabular-nums">
                 {what.read.map((r, i) => {
                   const b = base.read[i];
                   return (
                     <tr key={r.id} className="border-t border-line">
-                      <th scope="row" className="py-1.5 pr-2 text-left font-normal text-zinc-300">{r.label}</th>
+                      <th scope="row" className="py-1.5 pr-2 text-left font-sans text-sm font-normal text-fg-2">{r.label}</th>
                       <td className="py-1.5 pr-2">{b?.value === null || b === undefined ? "–" : `${fmtNum(b.value, 3)} ${b.unit}`}</td>
                       <td className="py-1.5 font-medium">{r.value === null ? "–" : `${fmtNum(r.value, 3)} ${r.unit}`}</td>
                     </tr>
@@ -154,7 +155,7 @@ function LocalWhatIf({ exp, ctx }: { exp: Experiment; ctx: WhatIfContext }) {
                 })}
               </tbody>
             </table>
-            <ul className="mt-3 space-y-1.5 text-sm text-zinc-300">
+            <ul className="mt-4 space-y-1.5 border-t border-line pt-3 text-sm leading-relaxed text-fg-2">
               {explanations.map((e) => (
                 <li key={e}>{e}</li>
               ))}
@@ -164,7 +165,12 @@ function LocalWhatIf({ exp, ctx }: { exp: Experiment; ctx: WhatIfContext }) {
                 <Button onClick={explain} disabled={explainBusy}>
                   {explainBusy ? "Asking Wonder…" : "Explain with Wonder"}
                 </Button>
-                {explainText ? <p className="mt-3 rounded-lg border border-line bg-background p-3 text-sm text-zinc-200">{explainText}</p> : null}
+                {explainText ? (
+                  <p className="mt-3 rounded-r-md border-l-2 border-wonder bg-wonder/[0.05] px-3.5 py-3 text-sm leading-relaxed text-foreground">
+                    <span className="eyebrow mb-1 block text-sky-300">Muse Wonder</span>
+                    {explainText}
+                  </p>
+                ) : null}
                 {explainError ? <div className="mt-3"><ErrorState error={explainError} /></div> : null}
               </div>
             ) : null}
@@ -208,7 +214,7 @@ function Control({ spec, value, onChange }: { spec: ControlSpec; value: number |
               role="radio"
               aria-checked={value === o.value}
               onClick={() => onChange(o.value)}
-              className={cn("min-h-11 rounded-lg border px-3.5 text-sm", value === o.value ? "border-ghost bg-ghost/10 text-ghost" : "border-line text-muted hover:text-foreground")}
+              className={chipClass(value === o.value)}
             >
               {o.label}
             </button>
@@ -223,7 +229,7 @@ function Control({ spec, value, onChange }: { spec: ControlSpec; value: number |
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <label htmlFor={id} className="text-sm font-medium">{spec.label}</label>
-        <output htmlFor={id} className="text-sm tabular-nums text-amber-300">
+        <output htmlFor={id} className="font-mono text-sm tabular-nums text-amber-300">
           {v.toFixed(spec.decimals)} {spec.unit}
         </output>
       </div>
@@ -245,8 +251,8 @@ function Control({ spec, value, onChange }: { spec: ControlSpec; value: number |
               type="button"
               onClick={() => onChange(p.value)}
               className={cn(
-                "min-h-9 rounded-md border px-2.5 text-xs",
-                Math.abs(v - p.value) < spec.step / 2 + 1e-9 ? "border-amber-400/60 bg-amber-400/10 text-amber-300" : "border-line text-muted hover:text-foreground",
+                "min-h-9 rounded-md border px-2.5 text-xs transition-colors",
+                Math.abs(v - p.value) < spec.step / 2 + 1e-9 ? "border-amber-400/60 bg-amber-400/10 text-amber-200" : "border-line text-muted hover:border-line-strong hover:text-foreground",
               )}
             >
               {p.label} {p.value}
@@ -298,6 +304,7 @@ function Stage({ ctx, exp, base, what, playing }: { ctx: WhatIfContext; exp: Exp
     canvas.width = cw * dpr;
     canvas.height = ch * dpr;
     const kx = cw / (trial?.width ?? 960);
+    const monoFont = getComputedStyle(document.documentElement).getPropertyValue("--font-plex-mono").trim() || "ui-monospace, monospace";
 
     // World to canvas pixels: the trial's calibration if we have it, else fit the motion box.
     const sampleWorld: [number, number][] = [];
@@ -330,10 +337,10 @@ function Stage({ ctx, exp, base, what, playing }: { ctx: WhatIfContext; exp: Exp
       const img = image.current;
       if (img && img.complete && img.naturalWidth > 0) {
         g.drawImage(img, 0, 0, cw, ch);
-        g.fillStyle = "rgba(7,9,12,0.35)";
+        g.fillStyle = "rgba(11,14,19,0.35)";
         g.fillRect(0, 0, cw, ch);
       } else {
-        g.fillStyle = "#0e1319";
+        g.fillStyle = "#10141a";
         g.fillRect(0, 0, cw, ch);
       }
       const [ax, ay] = toCanvas(ctx.anchor_m[0], ctx.anchor_m[1]);
@@ -398,8 +405,8 @@ function Stage({ ctx, exp, base, what, playing }: { ctx: WhatIfContext; exp: Exp
       drawBody(base, BASE_COLOR, false);
       drawBody(what, WHAT_COLOR, true);
 
-      g.font = "12px system-ui, sans-serif";
-      g.fillStyle = "#e7ecf2";
+      g.font = `12px ${monoFont}`;
+      g.fillStyle = "#ece9e2";
       g.fillText(`t = ${t.toFixed(2)} s`, 10, ch - 10);
     };
 
@@ -416,14 +423,16 @@ function Stage({ ctx, exp, base, what, playing }: { ctx: WhatIfContext; exp: Exp
 
   return (
     <div ref={wrapRef} className="w-full">
-      <canvas
-        ref={canvasRef}
-        role="img"
-        aria-label={`Your ${ctx.object.name.toLowerCase()} in the measured law (cyan ghost) and in the what-if (amber)`}
-        className="block w-full rounded-xl border border-line bg-black"
-        style={{ aspectRatio: String(aspect) }}
-      />
-      <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted">
+      <div className="viewfinder [--vf-color:rgb(34_211_238/0.7)]">
+        <canvas
+          ref={canvasRef}
+          role="img"
+          aria-label={`Your ${ctx.object.name.toLowerCase()} in the measured law (cyan ghost) and in the what-if (amber)`}
+          className="block w-full rounded-md border border-line bg-black"
+          style={{ aspectRatio: String(aspect) }}
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-4 font-mono text-xs text-muted">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="size-2.5 rounded-full" style={{ background: BASE_COLOR }} /> Measured law
         </span>

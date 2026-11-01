@@ -26,9 +26,12 @@ export function Tabs({
 }) {
   const listRef = useRef<HTMLDivElement>(null);
 
+  // On a phone the list scrolls sideways: center the selected tab, without scrolling the page.
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
-    el?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    const list = listRef.current;
+    const el = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!list || !el || list.scrollWidth <= list.clientWidth) return;
+    list.scrollTo({ left: el.offsetLeft - (list.clientWidth - el.offsetWidth) / 2, behavior: "smooth" });
   }, [active]);
 
   const enabled = tabs.filter((t) => !t.disabled);
@@ -47,13 +50,13 @@ export function Tabs({
   };
 
   return (
-    <div className="relative -mx-4 border-b border-line sm:mx-0">
+    <div className="sticky top-14 z-20 -mx-4 border-b border-line bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:mx-0">
       <div
         ref={listRef}
         role="tablist"
         aria-label="Experiment sections"
         onKeyDown={onKey}
-        className="scroll-hide flex gap-1 overflow-x-auto px-4 sm:px-0"
+        className="scroll-hide relative flex gap-0.5 overflow-x-auto px-4 sm:px-0"
       >
         {tabs.map((t) => {
           const selected = t.id === active;
@@ -69,13 +72,17 @@ export function Tabs({
               disabled={t.disabled}
               onClick={() => onChange(t.id)}
               className={cn(
-                "relative inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap px-3 text-sm font-medium transition-colors disabled:opacity-40",
-                selected ? "text-ghost" : "text-muted hover:text-foreground",
+                "relative inline-flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35",
+                selected ? "text-foreground" : "text-muted enabled:hover:text-foreground",
               )}
             >
               {t.label}
-              {t.hint ? <span className="text-xs text-muted">{t.hint}</span> : null}
-              {selected ? <span aria-hidden className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-ghost" /> : null}
+              {t.hint ? (
+                <span className={cn("rounded-[3px] border px-1 py-px font-mono text-[0.6875rem] leading-none", selected ? "border-ghost/50 text-ghost" : "border-line-strong text-muted")}>
+                  {t.hint}
+                </span>
+              ) : null}
+              {selected ? <span aria-hidden className="absolute inset-x-3 -bottom-px h-0.5 bg-ghost" /> : null}
             </button>
           );
         })}

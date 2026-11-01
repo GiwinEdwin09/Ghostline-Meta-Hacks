@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { CHART_COLORS, LineChart } from "@/components/charts/LineChart";
-import { Button, Card, ErrorState, Notice, SectionTitle, Skeleton, cn } from "@/components/ui";
+import { Button, Card, ErrorState, Notice, SectionTitle, Skeleton, chipClass, cn } from "@/components/ui";
 import { seekVideo, VideoPlayer } from "@/components/VideoPlayer";
 import { api, resolveMedia } from "@/lib/api";
 import { fmtNum } from "@/lib/format";
@@ -103,13 +103,10 @@ export function GhostPlayer({
               type="button"
               aria-pressed={g.version === version}
               onClick={() => setVersion(g.version)}
-              className={cn(
-                "min-h-11 rounded-lg border px-4 text-sm font-medium",
-                g.version === version ? "border-ghost/60 bg-ghost/10 text-ghost" : "border-line text-muted hover:text-foreground",
-              )}
+              className={chipClass(g.version === version, "font-medium")}
             >
-              Ghost v{g.version}
-              <span className="ml-2 text-xs font-normal opacity-80">{g.model_name.split(":")[0]}</span>
+              <span className="font-mono">Ghost v{g.version}</span>
+              <span className="text-xs font-normal opacity-80">{g.model_name.split(":")[0]}</span>
             </button>
           ))}
           {ghost.slow_video_url ? (
@@ -117,7 +114,7 @@ export function GhostPlayer({
               type="button"
               aria-pressed={slow}
               onClick={() => setSlow((s) => !s)}
-              className={cn("min-h-11 rounded-lg border px-4 text-sm", slow ? "border-ghost/60 bg-ghost/10 text-ghost" : "border-line text-muted")}
+              className={chipClass(slow)}
             >
               Slow motion
             </button>
@@ -129,7 +126,7 @@ export function GhostPlayer({
             type="button"
             aria-pressed={slow}
             onClick={() => setSlow((s) => !s)}
-            className={cn("min-h-11 rounded-lg border px-4 text-sm", slow ? "border-ghost/60 bg-ghost/10 text-ghost" : "border-line text-muted")}
+            className={chipClass(slow)}
           >
             {slow ? "Slow motion on" : "Slow motion"}
           </button>
@@ -137,6 +134,7 @@ export function GhostPlayer({
       ) : null}
 
       <VideoPlayer
+        framed
         src={src}
         poster={resolveMedia(ghost.poster_url)}
         aspect={aspect}
@@ -203,8 +201,8 @@ export function GhostPlayer({
       {lastRevision ? (
         <Card>
           <SectionTitle>Wonder&apos;s diagnosis</SectionTitle>
-          <p className="text-sm text-zinc-300">{lastRevision.diagnosis}</p>
-          <p className="mt-2 text-sm text-zinc-300">
+          <p className="text-sm text-fg-2">{lastRevision.diagnosis}</p>
+          <p className="mt-2 text-sm text-fg-2">
             <span className="font-medium text-foreground">{lastRevision.adopted ? "Revision adopted. " : "Revision not adopted. "}</span>
             {lastRevision.note}
           </p>
@@ -216,11 +214,11 @@ export function GhostPlayer({
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" | "warn" }) {
   return (
-    <div className="rounded-lg border border-line bg-surface p-3">
-      <dt className="text-xs text-muted">{label}</dt>
+    <div className="rounded-md border border-line bg-surface p-3">
+      <dt className="eyebrow">{label}</dt>
       <dd
         className={cn(
-          "mt-0.5 text-base font-semibold tabular-nums",
+          "mt-1.5 font-mono text-base font-medium tabular-nums",
           tone === "good" && "text-emerald-300",
           tone === "bad" && "text-red-300",
           tone === "warn" && "text-amber-300",

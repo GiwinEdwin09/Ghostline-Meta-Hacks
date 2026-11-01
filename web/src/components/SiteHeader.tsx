@@ -1,62 +1,37 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
-import { ButtonLink, GhostMark } from "@/components/ui";
-
-const LINKS = [
-  { href: "/examples", label: "Examples" },
-  { href: "/benchmark", label: "Benchmark" },
-  { href: "/about", label: "About" },
-];
+import { MainNav, MainNavView, MobileMenu, MobileMenuView } from "@/components/MainNav";
+import { ButtonLink, LogoMark } from "@/components/ui";
+import { NAV_LINKS } from "@/lib/nav";
 
 export function SiteHeader() {
   const demo = process.env.NEXT_PUBLIC_USE_MOCKS === "1";
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+    <header className="sticky top-0 z-30 border-b border-line bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
-        <Link href="/" className="flex min-h-11 items-center gap-2 font-semibold tracking-tight">
-          <GhostMark className="size-6 text-ghost" />
-          Ghostline
+        <Link href="/" className="-ml-1 flex min-h-11 items-center gap-2 rounded-md px-1" aria-label="Ghostline, home">
+          <LogoMark className="size-7 text-foreground" />
+          <span className="font-display text-[1.45rem] leading-none tracking-tight">Ghostline</span>
         </Link>
         {demo ? (
-          <span className="whitespace-nowrap rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+          <span className="whitespace-nowrap rounded-[4px] border border-amber-400/40 bg-amber-400/[0.08] px-1.5 py-1 font-mono text-[0.625rem] font-medium uppercase leading-none tracking-[0.08em] text-amber-300">
             Demo<span className="hidden sm:inline"> data</span>
           </span>
         ) : null}
-        <nav aria-label="Main" className="ml-auto hidden items-center gap-1 sm:flex">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm text-muted hover:bg-surface-2 hover:text-foreground"
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-        <ButtonLink href="/new" tone="primary" className="ml-auto whitespace-nowrap px-3 sm:ml-2 sm:px-4">
-          New<span className="hidden sm:inline"> experiment</span>
+        {/* The active link reads the pathname, which suspends on /e/[id] while prerendering. */}
+        <Suspense fallback={<MainNavView pathname={null} />}>
+          <MainNav />
+        </Suspense>
+        <ButtonLink href="/new" tone="primary" className="ml-auto whitespace-nowrap px-3 sm:ml-1 sm:px-4">
+          <span aria-hidden className="text-base leading-none">+</span>
+          <span>
+            New<span className="hidden sm:inline"> experiment</span>
+          </span>
         </ButtonLink>
-        <details className="group relative sm:hidden">
-          <summary
-            aria-label="Menu"
-            className="flex size-11 cursor-pointer list-none items-center justify-center rounded-lg text-muted hover:bg-surface-2 [&::-webkit-details-marker]:hidden"
-          >
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-            </svg>
-          </summary>
-          <div className="absolute right-0 top-12 w-48 rounded-xl border border-line-strong bg-surface p-1.5 shadow-xl">
-            {LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-surface-2"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </div>
-        </details>
+        <Suspense fallback={<MobileMenuView pathname={null} />}>
+          <MobileMenu />
+        </Suspense>
       </div>
     </header>
   );
@@ -64,16 +39,26 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-line">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted">
-        <p>Ghostline. Built for the Meta AI Developer Hackathon.</p>
-        <p className="flex gap-4">
-          <Link href="/about" className="underline-offset-4 hover:underline">
-            How it works
+    <footer className="mt-20 border-t border-line">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div>
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2" aria-label="Ghostline, home">
+            <LogoMark className="size-6 text-foreground" />
+            <span className="font-display text-xl leading-none">Ghostline</span>
           </Link>
-          <Link href="/benchmark" className="underline-offset-4 hover:underline">
-            Benchmark
-          </Link>
+          <p className="mt-1 max-w-sm text-sm text-muted">A physics lab in your phone, with an AI lab partner that shows its work. Built for the Meta AI Developer Hackathon.</p>
+        </div>
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-5 text-sm text-muted">
+          {[...NAV_LINKS, { href: "/new", label: "New experiment" }].map((l) => (
+            <Link key={l.href} href={l.href} className="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline">
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <div className="border-t border-line">
+        <p className="eyebrow mx-auto w-full max-w-6xl px-4 py-3 normal-case tracking-[0.04em]">
+          x(t) = x₀ + v₀t + ½gt² &nbsp;·&nbsp; every number on this site comes from the harness, not the model
         </p>
       </div>
     </footer>

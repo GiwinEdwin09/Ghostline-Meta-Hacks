@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useMemo, useRef, useState } from "react";
 
 import { CHART_COLORS, LineChart, type Series } from "@/components/charts/LineChart";
-import { Badge, Card, ErrorState, Notice, SectionTitle, Skeleton, cn } from "@/components/ui";
+import { Badge, Card, ErrorState, Notice, SectionTitle, Skeleton, chipClass } from "@/components/ui";
 import { seekVideo, VideoPlayer } from "@/components/VideoPlayer";
 import { api, resolveMedia } from "@/lib/api";
 import { fmtNum } from "@/lib/format";
@@ -44,9 +44,10 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
   const series = winner?.fit?.series ?? null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <section aria-label="Tracked video" className="space-y-3">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Overlays">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Overlays">
+          <span className="eyebrow mr-1">Overlays</span>
           <Toggle checked={showTrail} onChange={setShowTrail} label="Trail" />
           {samUrl ? <Toggle checked={showMask} onChange={setShowMask} label="SAM 3.1 mask" /> : null}
         </div>
@@ -88,7 +89,7 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <SectionTitle>Scale and timing</SectionTitle>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
             {cal ? (
               <>
                 <Fact label="Scale" value={`${fmtNum(cal.mm_per_px, 3)} mm per pixel`} sub={`± ${(cal.sigma_scale_rel * 100).toFixed(2)}%`} />
@@ -114,7 +115,7 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
             <img
               src={resolveMedia(trial.media.calib_overlay_url)}
               alt="The detected sheet outline with a 5 cm grid drawn through the calibration"
-              className="w-full rounded-lg border border-line bg-black"
+              className="w-full rounded-md border border-line bg-black"
               style={{ aspectRatio: String(trial.width / trial.height) }}
               loading="lazy"
             />
@@ -128,13 +129,15 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
         {exp.quality_flags.length === 0 && trial.quality_flags.length === 0 ? (
           <p className="text-sm text-muted">No problems found: steady camera, sheet fully visible, steady frame rate.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="divide-y divide-line">
             {[...exp.quality_flags, ...trial.quality_flags.filter((f) => !exp.quality_flags.some((g) => g.id === f.id))].map((f) => (
-              <li key={f.id} className="flex gap-3">
-                <Badge tone={f.severity === "major" ? "red" : f.severity === "minor" ? "amber" : "neutral"}>{f.severity}</Badge>
-                <div>
+              <li key={f.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                <Badge tone={f.severity === "major" ? "red" : f.severity === "minor" ? "amber" : "neutral"} className="mt-0.5 w-16 justify-center">
+                  {f.severity}
+                </Badge>
+                <div className="min-w-0">
                   <p className="text-sm font-medium">{f.title}</p>
-                  <p className="text-sm text-zinc-300">{f.detail}</p>
+                  <p className="text-sm text-fg-2">{f.detail}</p>
                 </div>
               </li>
             ))}
@@ -147,13 +150,8 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label
-      className={cn(
-        "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3.5 text-sm",
-        checked ? "border-ghost/60 bg-ghost/10 text-ghost" : "border-line text-muted",
-      )}
-    >
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-cyan-400" />
+    <label className={chipClass(checked)}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-ghost" />
       {label}
     </label>
   );
@@ -162,8 +160,8 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function Fact({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dt className="eyebrow">{label}</dt>
+      <dd className="mt-1 font-mono text-[0.9375rem] tabular-nums">{value}</dd>
       {sub ? <dd className="text-xs text-muted">{sub}</dd> : null}
     </div>
   );
@@ -179,7 +177,7 @@ function TrailOverlay({ traj, trial, time, trail }: { traj: Trajectory; trial: T
   return (
     <svg viewBox={`0 0 ${trial.width} ${trial.height}`} className="size-full" preserveAspectRatio="xMidYMid meet" aria-hidden>
       {trail && pts.length > 1 ? (
-        <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke={CHART_COLORS.data} strokeOpacity={0.85} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
       ) : null}
       {here ? (
         <>

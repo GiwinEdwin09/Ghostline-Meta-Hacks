@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button, Card, ErrorState, Notice, Skeleton, cn } from "@/components/ui";
+import { Button, Card, ErrorState, Notice, Skeleton, chipClass, cn, inputClass } from "@/components/ui";
 import { UploadPanel } from "@/components/wizard/UploadPanel";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { api, resolveMedia } from "@/lib/api";
@@ -63,6 +63,16 @@ export function Wizard() {
   const [experimentId, setExperimentId] = useState<string | null>(null);
   const [trialId, setTrialId] = useState<string | null>(null);
   const creating = useRef<Promise<string> | null>(null);
+  const root = useRef<HTMLElement>(null);
+  const shownStep = useRef(step);
+
+  // Each step starts at the top of the page, with focus on its heading for screen readers and keyboards.
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    window.scrollTo({ top: 0 });
+    root.current?.querySelector<HTMLElement>("h1")?.focus({ preventScroll: true });
+  }, [step]);
 
   const ensureExperiment = () => {
     if (experimentId) return Promise.resolve(experimentId);
@@ -90,23 +100,21 @@ export function Wizard() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10">
-      <nav aria-label="Progress" className="mb-6">
-        <ol className="flex items-center gap-2">
+    <main ref={root} className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:py-12">
+      <nav aria-label="Progress" className="mb-8">
+        <p className="eyebrow mb-3">New experiment</p>
+        <ol className="grid grid-cols-4 gap-1.5">
           {STEPS.map((s, i) => (
-            <li key={s} className="flex flex-1 items-center gap-2" aria-current={i === step ? "step" : undefined}>
+            <li key={s} aria-current={i === step ? "step" : undefined}>
               <span
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
-                  i < step && "border-emerald-400/60 bg-emerald-400/15 text-emerald-300",
-                  i === step && "border-ghost bg-ghost/15 text-ghost",
-                  i > step && "border-line-strong text-muted",
-                )}
-              >
-                {i < step ? "✓" : i + 1}
+                aria-hidden
+                className={cn("block h-1 rounded-full transition-colors", i < step ? "bg-foreground/60" : i === step ? "bg-ghost" : "bg-line-strong")}
+              />
+              <span className={cn("mt-2 flex items-baseline gap-1.5 text-sm", i === step ? "text-foreground" : "text-muted")}>
+                <span className="font-mono text-xs">{i < step ? "✓" : String(i + 1).padStart(2, "0")}</span>
+                <span className="hidden sm:inline">{s}</span>
+                <span className="sr-only sm:hidden">{s}</span>
               </span>
-              <span className={cn("hidden text-sm sm:inline", i === step ? "text-foreground" : "text-muted")}>{s}</span>
-              {i < STEPS.length - 1 ? <span aria-hidden className="h-px flex-1 bg-line" /> : null}
             </li>
           ))}
         </ol>
@@ -117,10 +125,11 @@ export function Wizard() {
 
       {step === 0 ? (
         <section aria-labelledby="step1">
-          <h1 id="step1" className="text-2xl font-semibold tracking-tight">
+          <h1 id="step1" tabIndex={-1} className="font-display outline-none text-[2.6rem] leading-[1.05] sm:text-5xl">
             What are you filming?
           </h1>
-          <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <p className="mt-2 text-sm text-muted">Pick the closest match. If none fits, choose Not sure.</p>
+          <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {SYSTEMS.map((s) => (
               <li key={s.id}>
                 <button
@@ -131,13 +140,14 @@ export function Wizard() {
                     setStep(1);
                   }}
                   className={cn(
-                    "flex min-h-32 w-full flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors",
-                    system === s.id ? "border-ghost bg-ghost/10" : "border-line bg-surface hover:border-line-strong",
+                    "group relative flex min-h-36 w-full flex-col items-start gap-2 overflow-hidden rounded-md border p-4 text-left transition-colors",
+                    system === s.id ? "border-ghost bg-ghost/[0.08]" : "border-line bg-surface hover:border-muted/50 hover:bg-surface-2",
                   )}
                 >
-                  <span className="text-ghost">{s.icon}</span>
-                  <span className="font-medium">{s.id === "unknown" ? "Not sure" : SYSTEM_LABELS[s.id as SystemType]}</span>
-                  <span className="text-xs text-muted">{s.blurb}</span>
+                  <span aria-hidden className="graph-paper absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <span className="relative text-ghost">{s.icon}</span>
+                  <span className="relative mt-auto font-medium">{s.id === "unknown" ? "Not sure" : SYSTEM_LABELS[s.id as SystemType]}</span>
+                  <span className="relative text-xs leading-relaxed text-muted">{s.blurb}</span>
                 </button>
               </li>
             ))}
@@ -148,7 +158,7 @@ export function Wizard() {
       {step === 1 && system ? (
         <section aria-labelledby="step2" className="space-y-6">
           <div>
-            <h1 id="step2" className="text-2xl font-semibold tracking-tight">
+            <h1 id="step2" tabIndex={-1} className="font-display outline-none text-[2.6rem] leading-[1.05] sm:text-5xl">
               Set up the shot
             </h1>
             <p className="mt-1 text-sm text-muted">Most accuracy problems start at the camera. Five things to check first.</p>
@@ -156,8 +166,8 @@ export function Wizard() {
           <ul className="space-y-2">
             {COMMON_CHECKLIST.map((c, i) => (
               <li key={i}>
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface p-3">
-                  <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-cyan-400" />
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md border border-line bg-surface p-3.5 transition-colors hover:border-line-strong has-[:checked]:border-ghost/40 has-[:checked]:bg-ghost/[0.04]">
+                  <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-ghost" />
                   <span>
                     <span className="block text-sm font-medium">{c.item}</span>
                     <span className="block text-xs text-muted">{c.why}</span>
@@ -181,15 +191,15 @@ export function Wizard() {
                 inputMode="decimal"
                 value={offsetCm}
                 onChange={(e) => setOffsetCm(e.target.value)}
-                className="h-11 w-32 rounded-lg border border-line-strong bg-background px-3 text-base"
+                className={cn(inputClass, "h-11 w-32 font-mono")}
               />
             </Field>
             <fieldset>
               <legend className="text-sm font-medium">Paper size</legend>
               <p className="text-xs text-muted">Ghostline checks this from the picture, so this is only a confirmation.</p>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {(["a4", "letter"] as const).map((p) => (
-                  <Radio key={p} checked={paper === p} onChange={() => setPaper(p)} label={p === "a4" ? "A4" : "US Letter"} />
+                  <Radio key={p} name="paper" checked={paper === p} onChange={() => setPaper(p)} label={p === "a4" ? "A4" : "US Letter"} />
                 ))}
               </div>
             </fieldset>
@@ -197,6 +207,7 @@ export function Wizard() {
               <legend className="text-sm font-medium">How did you record it?</legend>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Radio
+                  name="capture"
                   checked={mode === "normal"}
                   onChange={() => {
                     setMode("normal");
@@ -205,6 +216,7 @@ export function Wizard() {
                   label="Normal video, 60 fps"
                 />
                 <Radio
+                  name="capture"
                   checked={mode === "slow_mo"}
                   onChange={() => {
                     setMode("slow_mo");
@@ -226,7 +238,7 @@ export function Wizard() {
                   inputMode="decimal"
                   value={lengthCm}
                   onChange={(e) => setLengthCm(e.target.value)}
-                  className="h-11 w-32 rounded-lg border border-line-strong bg-background px-3 text-base"
+                  className={cn(inputClass, "h-11 w-32 font-mono")}
                 />
               </Field>
             ) : null}
@@ -236,16 +248,16 @@ export function Wizard() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-line-strong bg-background px-3 py-2 text-base"
+                className={cn(inputClass, "block w-full py-2")}
               />
             </Field>
           </Card>
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2 border-t border-line pt-5">
             <Button tone="ghost" onClick={() => setStep(0)}>
-              Back
+              ← Back
             </Button>
             <Button tone="primary" onClick={() => setStep(2)}>
-              Continue to upload
+              Continue to upload →
             </Button>
           </div>
         </section>
@@ -254,7 +266,7 @@ export function Wizard() {
       {step === 2 ? (
         <section aria-labelledby="step3" className="space-y-5">
           <div>
-            <h1 id="step3" className="text-2xl font-semibold tracking-tight">
+            <h1 id="step3" tabIndex={-1} className="font-display outline-none text-[2.6rem] leading-[1.05] sm:text-5xl">
               Upload your clip
             </h1>
             <p className="mt-1 text-sm text-muted">Record it with your camera app first, then pick it here.</p>
@@ -269,9 +281,11 @@ export function Wizard() {
               setStep(3);
             }}
           />
-          <Button tone="ghost" onClick={() => setStep(1)}>
-            Back
-          </Button>
+          <div className="border-t border-line pt-5">
+            <Button tone="ghost" onClick={() => setStep(1)}>
+              ← Back
+            </Button>
+          </div>
         </section>
       ) : null}
 
@@ -281,31 +295,26 @@ export function Wizard() {
           onAnalyze={() => router.push(`/e/${experimentId}`)}
         />
       ) : null}
-    </div>
+    </main>
   );
 }
 
 function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: ReactNode }) {
   return (
     <div>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="block text-sm font-medium">
         {label}
       </label>
-      {hint ? <p className="mb-1.5 text-xs text-muted">{hint}</p> : null}
-      {children}
+      {hint ? <p className="mt-0.5 text-xs leading-relaxed text-muted">{hint}</p> : null}
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
 
-function Radio({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+function Radio({ name, checked, onChange, label }: { name: string; checked: boolean; onChange: () => void; label: string }) {
   return (
-    <label
-      className={cn(
-        "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3.5 text-sm",
-        checked ? "border-ghost bg-ghost/10" : "border-line hover:border-line-strong",
-      )}
-    >
-      <input type="radio" checked={checked} onChange={onChange} className="size-4 accent-cyan-400" />
+    <label className={chipClass(checked)}>
+      <input type="radio" name={name} checked={checked} onChange={onChange} className="size-4 accent-ghost" />
       {label}
     </label>
   );
@@ -330,7 +339,7 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
   if (!trial || !ready) {
     return (
       <section aria-live="polite" className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Preparing your clip</h1>
+        <h1 tabIndex={-1} className="font-display text-[2.6rem] leading-[1.05] outline-none sm:text-5xl">Preparing your clip</h1>
         <p className="text-sm text-muted">Fixing orientation and color, and reading the real timestamp of every frame.</p>
         <Skeleton className="aspect-video w-full" />
         {trial?.status === "failed" ? <ErrorState error={new Error(trial.error ?? "The clip could not be read.")} /> : null}
@@ -360,7 +369,7 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
   return (
     <section aria-labelledby="step4" className="space-y-5">
       <div>
-        <h1 id="step4" className="text-2xl font-semibold tracking-tight">
+        <h1 id="step4" tabIndex={-1} className="font-display outline-none text-[2.6rem] leading-[1.05] sm:text-5xl">
           Check the clip
         </h1>
         <p className="mt-1 text-sm text-muted">Ghostline suggested the stretch where something moves. Drag the handles to change it.</p>
@@ -374,10 +383,12 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
       />
       <Card className="space-y-4">
         <div>
-          <p className="text-sm font-medium">
-            Analyze from {fmtTime(s)} to {fmtTime(e)}
+          <p className="eyebrow">Analysis window</p>
+          <p className="mt-1.5 text-sm font-medium">
+            Analyze from <span className="font-mono text-ghost">{fmtTime(s)}</span> to <span className="font-mono text-ghost">{fmtTime(e)}</span>
             <span className="font-normal text-muted"> of {fmtTime(duration)}</span>
           </p>
+          <TrimBar duration={duration} start={s} end={e} />
           <div className="mt-3 space-y-1">
             <label className="text-xs text-muted" htmlFor="trim-start">
               Start
@@ -390,7 +401,7 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
               step={0.05}
               value={s}
               onChange={(ev) => setStart(Math.min(Number(ev.target.value), e - gap))}
-              className="h-11 w-full accent-cyan-400"
+              className="h-11 w-full accent-ghost"
             />
             <label className="text-xs text-muted" htmlFor="trim-end">
               End
@@ -403,21 +414,21 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
               step={0.05}
               value={e}
               onChange={(ev) => setEnd(Math.max(Number(ev.target.value), s + gap))}
-              className="h-11 w-full accent-cyan-400"
+              className="h-11 w-full accent-ghost"
             />
           </div>
         </div>
         {timing ? (
-          <dl className="grid grid-cols-2 gap-3 text-sm">
+          <dl className="grid grid-cols-2 gap-3 border-t border-line pt-4 text-sm">
             <div>
-              <dt className="text-xs text-muted">Capture</dt>
-              <dd>
+              <dt className="eyebrow">Capture</dt>
+              <dd className="mt-1">
                 {timing.declared_mode === "slow_mo" ? "Slow-mo" : "Normal video"}, {timing.detected_fps} fps
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted">Timing</dt>
-              <dd>{timing.classification === "cfr" ? "Steady frame rate" : timing.classification.replace("_", " ")}</dd>
+              <dt className="eyebrow">Timing</dt>
+              <dd className="mt-1">{timing.classification === "cfr" ? "Steady frame rate" : timing.classification.replace("_", " ")}</dd>
             </div>
           </dl>
         ) : null}
@@ -428,11 +439,22 @@ function Confirm({ experimentId, onAnalyze }: { experimentId: string; onAnalyze:
         ) : null}
       </Card>
       {error ? <ErrorState error={error} /> : null}
-      <div className="flex justify-end">
-        <Button tone="primary" onClick={analyze} disabled={busy}>
-          {busy ? "Starting…" : "Analyze"}
+      <div className="flex justify-end border-t border-line pt-5">
+        <Button tone="primary" onClick={analyze} disabled={busy} className="min-h-12 px-6 text-base">
+          {busy ? "Starting…" : "Analyze →"}
         </Button>
       </div>
     </section>
+  );
+}
+
+/** The chosen stretch of the clip, drawn on a timeline above the two sliders. */
+function TrimBar({ duration, start, end }: { duration: number; start: number; end: number }) {
+  const pct = (v: number) => `${Math.min(100, Math.max(0, (v / (duration || 1)) * 100))}%`;
+  return (
+    <div aria-hidden className="relative mt-4 h-8 rounded-sm border border-line bg-background">
+      <div className="graph-paper absolute inset-0 opacity-70" />
+      <div className="absolute inset-y-0 border-x-2 border-ghost bg-ghost/15" style={{ left: pct(start), width: `calc(${pct(end)} - ${pct(start)})` }} />
+    </div>
   );
 }

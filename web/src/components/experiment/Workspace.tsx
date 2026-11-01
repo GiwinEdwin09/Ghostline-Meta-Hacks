@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { HypothesesTab } from "@/components/experiment/HypothesesTab";
 import { MeasurementTab } from "@/components/experiment/MeasurementTab";
@@ -14,15 +14,16 @@ import { NotebookTimeline } from "@/components/NotebookTimeline";
 import { PipelineStepper } from "@/components/PipelineStepper";
 import { Tabs, type TabSpec } from "@/components/Tabs";
 import {
+  ArrowLink,
   Button,
   ConfidenceBadge,
   ErrorState,
   Notice,
   ReviewBadge,
   Skeleton,
-  SystemBadge,
 } from "@/components/ui";
 import { api } from "@/lib/api";
+import { SYSTEM_LABELS } from "@/lib/format";
 import { useExperimentLive } from "@/lib/hooks";
 import type { Experiment } from "@/lib/types";
 
@@ -40,16 +41,30 @@ export function Workspace({ id }: { id: string }) {
   const params = useSearchParams();
   const requested = params.get("tab");
   const [retryError, setRetryError] = useState<unknown>(null);
+  const pendingScroll = useRef(false);
   const exp = live.experiment;
+
+  // After a tab change, if the reader was below the tabs, put the top of the new panel just under
+  // the sticky tab bar. It runs once the panel has rendered, so a height change can't cut it short.
+  useEffect(() => {
+    if (!pendingScroll.current) return;
+    pendingScroll.current = false;
+    const panel = document.querySelector<HTMLElement>('[role="tabpanel"]');
+    const bar = document.querySelector<HTMLElement>('[role="tablist"]')?.parentElement;
+    if (!panel || !bar) return;
+    const stuckAt = parseFloat(getComputedStyle(bar).top) || 0;
+    const target = panel.getBoundingClientRect().top + window.scrollY - stuckAt - bar.offsetHeight - 16;
+    if (window.scrollY > target) window.scrollTo({ top: Math.max(0, target) });
+  }, [requested]);
 
   if (live.loading) return <WorkspaceSkeleton />;
   if (live.error && !exp) {
     return (
       <Shell>
         <ErrorState error={live.error} onRetry={live.refresh} />
-        <Link href="/examples" className="mt-4 inline-flex min-h-11 items-center text-sm text-ghost">
+        <ArrowLink href="/examples" className="mt-4">
           Back to the examples
-        </Link>
+        </ArrowLink>
       </Shell>
     );
   }
@@ -60,8 +75,8 @@ export function Workspace({ id }: { id: string }) {
   const setTab = (next: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
+    pendingScroll.current = true;
     router.replace(`${url.pathname}${url.search}`, { scroll: false });
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const retry = async () => {
@@ -89,19 +104,22 @@ export function Workspace({ id }: { id: string }) {
   const running = live.active && live.job;
   return (
     <Shell>
-      <header className="space-y-3">
-        <Link href="/examples" className="inline-flex min-h-11 items-center gap-1 text-sm text-muted hover:text-foreground">
+      <header>
+        <Link href="/examples" className="-ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm text-muted hover:text-foreground">
           <span aria-hidden>←</span> Examples
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{exp.title}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <SystemBadge system={exp.system_type} />
-          <StatusBadge exp={exp} />
-          <ConfidenceBadge level={exp.confidence} />
-          <ReviewBadge status={exp.review_status} />
-        </div>
-        {exp.headline ? <p className="text-lg text-zinc-200">{exp.headline}</p> : null}
-        {exp.description ? <p className="text-sm text-muted">{exp.description}</p> : null}
+        <p className="eyebrow mt-3">
+          {SYSTEM_LABELS[exp.system_type]} · <StatusLabel exp={exp} />
+        </p>
+        <h1 className="mt-2 font-display text-[2.4rem] leading-[1.04] tracking-[-0.01em] sm:text-5xl">{exp.title}</h1>
+        {exp.headline ? <p className="mt-4 font-mono text-lg text-ghost sm:text-xl">{exp.headline}</p> : null}
+        {exp.confidence || exp.review_status ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <ConfidenceBadge level={exp.confidence} />
+            <ReviewBadge status={exp.review_status} />
+          </div>
+        ) : null}
+        {exp.description ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{exp.description}</p> : null}
       </header>
 
       {running ? (
@@ -132,7 +150,7 @@ export function Workspace({ id }: { id: string }) {
       {exp.trials.length > 0 ? (
         <>
           <Tabs tabs={tabs} active={tab} onChange={setTab} idPrefix="exp" />
-          <div role="tabpanel" id={`exp-panel-${tab}`} aria-labelledby={`exp-tab-${tab}`} tabIndex={0} className="min-h-[40vh] outline-none">
+          <div role="tabpanel" id={`exp-panel-${tab}`} aria-labelledby={`exp-tab-${tab}`} tabIndex={0} className="min-h-[40vh] rounded-sm pt-1 focus-visible:outline-offset-4">
             {tab === "result" && complete ? <ResultTab exp={exp} events={live.events} goTab={setTab} /> : null}
             {tab === "measurement" ? <MeasurementTab exp={exp} /> : null}
             {tab === "hypotheses" ? <HypothesesTab exp={exp} /> : null}
@@ -166,7 +184,7 @@ function isEnabled(tab: TabId, exp: Experiment, complete: boolean): boolean {
   }
 }
 
-function StatusBadge({ exp }: { exp: Experiment }) {
+function StatusLabel({ exp }: { exp: Experiment }) {
   const label: Record<Experiment["status"], string> = {
     draft: "Draft",
     ingesting: "Preparing the clip",
@@ -176,18 +194,19 @@ function StatusBadge({ exp }: { exp: Experiment }) {
     failed: "Failed",
     blocked: "Can't measure this",
   };
-  return <span className="inline-flex items-center rounded-full border border-line-strong px-2.5 py-0.5 text-xs text-muted">{label[exp.status]}</span>;
+  return <span className={exp.status === "failed" || exp.status === "blocked" ? "text-red-300" : undefined}>{label[exp.status]}</span>;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-5xl space-y-5 px-4 py-4 sm:py-8">{children}</div>;
+  return <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6 sm:py-10">{children}</main>;
 }
 
 function WorkspaceSkeleton() {
   return (
     <Shell>
       <Skeleton className="h-4 w-24" />
-      <Skeleton className="h-9 w-3/4" />
+      <Skeleton className="h-3 w-40" />
+      <Skeleton className="h-12 w-3/4" />
       <Skeleton className="h-6 w-1/2" />
       <Skeleton className="h-11 w-full" />
       <Skeleton className="h-64 w-full" />

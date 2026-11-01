@@ -15,7 +15,7 @@ export function HypothesesTab({ exp }: { exp: Experiment }) {
   const favorite = exp.models.find((m) => m.prior_rank === 1);
   return (
     <div className="space-y-4">
-      <p className="text-sm text-zinc-300">
+      <p className="max-w-3xl text-sm leading-relaxed text-fg-2">
         Wonder named {favorite ? <strong className="font-semibold text-foreground">{favorite.name}</strong> : "its favorite"} as its first guess before any fit, along with what would refute it.
         Each model was fitted on the first 65% of the motion and judged on how well it forecast the rest. Lower is better; the whiskers are 95% intervals.
       </p>
