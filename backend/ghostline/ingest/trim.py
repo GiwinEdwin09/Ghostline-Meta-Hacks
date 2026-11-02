@@ -8,8 +8,9 @@ from .frames import iter_frames
 from .models import TrimSuggestion
 
 ANALYSIS_WIDTH = 160
+CHANGE_GREY = 15.0  # a pixel has changed when it moved by more than this; sensor noise is ~1-2
+MIN_CHANGED = 4  # pixels; a 3 px ball moving by one pixel changes about this many
 MAD_K = 5.0
-ENERGY_FLOOR = 0.003  # grey levels, so a noiseless static clip doesn't give a zero threshold
 PAD_S = 0.3
 BRIDGE_S = 0.25  # gaps shorter than this inside the motion are closed (turning points)
 MIN_RUN = 3  # frames
@@ -17,7 +18,12 @@ MIN_RUN_SCORE = 0.25  # a run must hold this share of the strongest run's excess
 
 
 def motion_energy(path, lag: int = 1) -> tuple[np.ndarray, float, int]:
-    """Mean absolute difference between frames `lag` apart, at 160 px grayscale.
+    """How many pixels changed by more than CHANGE_GREY between frames `lag` apart, at 160 px
+    grayscale.
+
+    The plan's mean absolute difference hides a small object (a 5 px pendulum bob barely moves a
+    frame mean) and has no zero, so motion that fills the clip looks like noise. Counting strong
+    changes leaves a static tripod scene at about zero and keeps small objects visible.
 
     A lag of about real_fps / 60 keeps the energy comparable across frame rates. Returns
     (energy per frame, median luma 0-255, frame count); the first `lag` entries repeat energy[lag].
@@ -26,7 +32,8 @@ def motion_energy(path, lag: int = 1) -> tuple[np.ndarray, float, int]:
     for _, _, gray in iter_frames(path, width=ANALYSIS_WIDTH, gray=True):
         g = gray.astype(np.float32)
         lumas.append(float(g.mean()))
-        energy.append(float(np.abs(g - window[0]).mean()) if len(window) == lag else np.nan)
+        changed = np.abs(g - window[0]) > CHANGE_GREY if len(window) == lag else None
+        energy.append(float(changed.sum()) if changed is not None else np.nan)
         window.append(g)
         window = window[-lag:]
     energy = np.asarray(energy)
@@ -43,19 +50,20 @@ def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
 def suggest_trim(
     energy: np.ndarray, t_real: np.ndarray, usable: tuple[int, int] | None = None
 ) -> TrimSuggestion:
-    """Window where the frame difference exceeds the noise level + 5 MAD, padded 0.3 s each side.
+    """Window where the changed-pixel count exceeds the stillest frames' level + 5 MAD (and at
+    least MIN_CHANGED), padded 0.3 s each side.
 
     `usable` restricts the search to frames [lo, hi), for clips with a mixed frame rate.
     """
     lo, hi = usable or (0, len(energy))
     t_real, energy = t_real[lo:hi], energy[lo:hi]
     n = len(energy)
-    # The plan's median + 5 MAD, but taken from the quietest half: when the motion fills more than
-    # half the clip (a long swing) the plain median is already motion.
-    base = float(np.percentile(energy, 25))
-    quiet = energy[energy <= np.median(energy)]
-    mad = float(np.median(np.abs(quiet - base))) * 1.4826
-    threshold = base + MAD_K * max(mad, ENERGY_FLOOR)
+    # The floor comes from the stillest few frames, not the median: a swing or a spin-down can fill
+    # nearly the whole clip, and only its turning points or the stopped end are still.
+    base = float(np.percentile(energy, 2))
+    still = energy[energy <= np.percentile(energy, 5)]
+    mad = float(np.median(np.abs(still - base))) * 1.4826
+    threshold = max(base + MAD_K * mad, float(MIN_CHANGED))
     active = energy > threshold
     dt = float(np.median(np.diff(t_real))) if n > 1 else 1.0
     bridge = max(1, round(BRIDGE_S / dt))
