@@ -123,6 +123,15 @@ def test_camera_motion_thresholds():
     assert any(n.code == "camera_moved" and n.severity == "error" for n in cal.notices)
 
 
+def test_one_covered_corner_is_not_camera_motion():
+    c = order_corners(scene(system="free_fall").corners_px)
+    late = c.copy()
+    late[1] += [5.0, 3.0]  # a hand over one corner in the last probe frame
+    assert camera_motion([c, c, late]).status == "ok"
+    turned = c + (c - c.mean(axis=0)) * 0.06  # a zoom moves all four corners (about 4 px here)
+    assert camera_motion([c, c, turned]).status == "stop"
+
+
 def test_camera_level_gravity_follows_a_rolled_phone():
     _, level = calibrated(azimuth_deg=0, elevation_deg=0)
     _, rolled = calibrated(azimuth_deg=0, elevation_deg=0, roll_deg=6)

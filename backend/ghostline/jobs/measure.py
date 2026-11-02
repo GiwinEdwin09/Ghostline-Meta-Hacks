@@ -17,9 +17,11 @@ import pandas as pd
 
 from ghostline.calib import calibrate as run_calibration
 from ghostline.calib import detect_sheet_corners, write_calibration
+from ghostline.calib.drift import MAX_CORRECTABLE_PX, Drift, estimate_drift, undrift
 from ghostline.calib.model import Calibration
 from ghostline.ingest import DeclaredCapture as IngestDeclared
 from ghostline.ingest import IngestError, ingest_trial
+from ghostline.ingest.models import Notice
 from ghostline.jobs import media
 from ghostline.jobs.clients import llm_errors
 from ghostline.jobs.context import JobContext
@@ -551,6 +553,20 @@ def calibrate(
     if len(probes) >= 2:
         corner_sets = np.asarray(probes, float)
 
+    # Take out the camera's drift first, so the corner check below sees only what a shift can't
+    # explain (rotation, zoom) and still stops those clips.
+    drift = _measure_drift(exp_dir, trial, size[0])
+    if drift is not None and drift.max_px > MAX_CORRECTABLE_PX:
+        raise StageError(
+            f"The camera moved {drift.max_px:.0f} px during the clip, which is too much to "
+            "correct. Film again with the phone on a tripod.",
+            code="camera_moved",
+            retryable=False,
+        )
+    probe_frames = sheet.stats.get("probe_frames") or []
+    if drift is not None and corner_sets is not None and len(probe_frames) == len(corner_sets):
+        corner_sets = corner_sets - drift.at(probe_frames)[:, None, :]
+
     options = {
         "sheet_mask": mask,
         "gray": gray,
@@ -575,12 +591,24 @@ def calibrate(
     ctx.progress(0.7)
 
     calib_dir = trial_dir / "calib"
+    if drift is not None:
+        calib.notices.append(
+            Notice(
+                code="camera_drift_corrected",
+                message=f"The camera drifted {drift.max_px:.0f} px during the clip. Ghostline "
+                "measured the shift on the background and took it out. Starting the recording "
+                "with a timer, hands off the phone, avoids it.",
+            )
+        )
     write_calibration(calib, calib_dir, median)
     paths = {
         "calibration": _rel(ctx, trial, calib_dir / "calibration.json"),
         "calib_overlay": _rel(ctx, trial, calib_dir / "calib_overlay.png"),
         "rectified": _rel(ctx, trial, calib_dir / "rectified.png"),
     }
+    if drift is not None:
+        drift.save(calib_dir / "drift.npz")
+        paths["drift"] = _rel(ctx, trial, calib_dir / "drift.npz")
     sigma = calib.uncertainty.sigma_scale_rel
     ctx.notebook.append(
         actor="harness",
@@ -610,6 +638,20 @@ def calibrate(
 
 
 # --- extract_trajectory ----------------------------------------------------------------------
+DRIFT_IGNORE_PX = 1.0  # below this a tripod clip is left exactly as it was
+
+
+def _measure_drift(exp_dir: Path, trial: Trial, master_width: int) -> Drift | None:
+    """The camera's translation during the clip, measured on the master, or None when it stays
+    under DRIFT_IGNORE_PX."""
+    master = trial.paths.get("master")
+    fps = (trial.timing or {}).get("real_fps")
+    if not master or not fps or not (exp_dir / master).exists():
+        return None
+    drift = estimate_drift(exp_dir / master, float(fps), master_width)
+    return drift if drift.max_px > DRIFT_IGNORE_PX else None
+
+
 def _series(table: pd.DataFrame, key: str | None) -> TrackSeries | None:
     if key is None or key not in set(table["object_key"]):
         return None
@@ -641,6 +683,9 @@ def extract_trajectory(
     """Part 9: tracks and calibration to clean metres, radians and real seconds."""
     trial_dir = ctx.paths.trial_dir(trial.experiment_id, trial.id)
     table = pd.read_parquet(trial_dir / "tracks.parquet")
+    if drift_path := calibration.paths.get("drift"):
+        drift = Drift.load(ctx.paths.experiment_dir(trial.experiment_id) / drift_path)
+        table["cx"], table["cy"] = undrift(table["cx"], table["cy"], table["frame"], drift)
     key, pivot_key = _choose(scene, set(table["object_key"]))
     system = scene.system_type
     if system == "other" and experiment.system_type not in ("auto", "other"):
