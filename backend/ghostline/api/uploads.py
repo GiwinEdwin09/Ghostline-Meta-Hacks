@@ -147,16 +147,24 @@ def complete_upload(upload_id: UUID, services: ServicesDep, repo: RepoDep) -> Up
     trial_id = uuid4()
     ext = upload_files.extension_for(upload.filename)
     destination = services.paths.original(upload.experiment_id, trial_id, ext)
+    trial_dir = services.paths.trial_dir(upload.experiment_id, trial_id)
     try:
         sha256, size = upload_files.assemble(services.paths, upload, destination)
-    except upload_files.UploadIncomplete as exc:
+    except (upload_files.UploadIncomplete, FileNotFoundError) as exc:
+        # A concurrent complete that finished first deletes the chunks, possibly mid-read;
+        # its trial is the answer.
+        shutil.rmtree(trial_dir, ignore_errors=True)
+        latest = _load_upload(repo, upload_id)
+        if latest.status == "complete" and latest.trial_id:
+            return _existing_result(repo, latest)
+        if isinstance(exc, FileNotFoundError):
+            raise
         raise ApiError(
             409,
             "chunks_missing",
             f"{len(exc.missing)} chunk(s) haven't arrived yet. Send them and try again.",
             missing=exc.missing,
         ) from exc
-    trial_dir = services.paths.trial_dir(upload.experiment_id, trial_id)
     try:
         services.volume.commit()
         with repo.transaction() as tx:

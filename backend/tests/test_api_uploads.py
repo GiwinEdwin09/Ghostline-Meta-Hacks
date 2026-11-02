@@ -1,6 +1,7 @@
 import hashlib
 import os
 import random
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
@@ -324,6 +325,42 @@ def test_concurrent_completes_make_one_trial(client, spawner, repo):
     assert len(spawner.jobs) == 1
     assert {r.json()["trial_id"] for r in ok} <= {str(repo.list_trials(exp)[0].id)}
     assert all(r.status_code in (200, 409) for r in responses)
+
+
+def test_a_complete_whose_chunks_vanish_mid_read_returns_the_winners_trial(
+    client, spawner, repo, paths, monkeypatch
+):
+    """The complete that finishes first deletes the chunks while a slower one is reading them."""
+    from ghostline.store import uploads as upload_files
+
+    exp = make_experiment(client)
+    data = os.urandom(CHUNK * 3)
+    upload = start(client, exp, data)
+    upload_all(client, upload, data)
+    url = f"/api/uploads/{upload['upload_id']}/complete"
+    checked, winner_done = threading.Event(), threading.Event()
+    real_missing = upload_files.missing_chunks
+
+    def missing_then_pause(*args):
+        missing = real_missing(*args)
+        if not checked.is_set():  # the first complete pauses after its check; the second wins
+            checked.set()
+            winner_done.wait(10)
+        return missing
+
+    monkeypatch.setattr(upload_files, "missing_chunks", missing_then_pause)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        slow = pool.submit(client.post, url)
+        assert checked.wait(10)
+        winner = client.post(url)
+        winner_done.set()
+        loser = slow.result()
+
+    assert (winner.status_code, loser.status_code) == (200, 200), loser.text
+    assert loser.json()["trial_id"] == winner.json()["trial_id"]
+    assert len(repo.list_trials(exp)) == 1 and len(spawner.jobs) == 1
+    trials = paths.experiment_dir(exp) / "trials"
+    assert [d.name for d in trials.iterdir()] == [winner.json()["trial_id"]]  # no orphaned folder
 
 
 def test_complete_is_refused_while_another_job_runs(client, repo, paths, spawner):
