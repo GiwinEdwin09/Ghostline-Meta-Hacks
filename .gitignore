@@ -27,3 +27,6 @@ out/
 # Subagent worktrees
 .claude/worktrees/
 .cache/
+
+# Demo voiceover and screen recordings
+VoiceAndVidRecord/
