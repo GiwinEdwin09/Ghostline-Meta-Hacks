@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CHART_COLORS, LineChart } from "@/components/charts/LineChart";
+import { fitHeight } from "@/components/VideoPlayer";
 import { Button, Card, ErrorState, Notice, SectionTitle, chipClass, cn } from "@/components/ui";
 import { api, resolveMedia } from "@/lib/api";
 import { useElementWidth } from "@/lib/hooks";
@@ -422,7 +423,7 @@ function Stage({ ctx, exp, base, what, playing }: { ctx: WhatIfContext; exp: Exp
   }, [ctx, base, what, playing, width, aspect, H, trial]);
 
   return (
-    <div ref={wrapRef} className="w-full">
+    <div ref={wrapRef} className="w-full" style={fitHeight(aspect)}>
       <div className="viewfinder [--vf-color:rgb(34_211_238/0.7)]">
         <canvas
           ref={canvasRef}

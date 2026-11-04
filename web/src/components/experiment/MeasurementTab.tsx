@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { CHART_COLORS, LineChart, type Series } from "@/components/charts/LineChart";
 import { Badge, Card, ErrorState, Notice, SectionTitle, Skeleton, chipClass } from "@/components/ui";
-import { seekVideo, VideoPlayer } from "@/components/VideoPlayer";
+import { fitHeight, seekVideo, VideoPlayer } from "@/components/VideoPlayer";
 import { api, resolveMedia } from "@/lib/api";
 import { fmtNum } from "@/lib/format";
 import { useResource } from "@/lib/hooks";
@@ -52,7 +52,9 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
           {samUrl ? <Toggle checked={showMask} onChange={setShowMask} label="SAM 3.1 mask" /> : null}
         </div>
         {showMask && samUrl ? (
-          <SamMaskVideo videoUrl={trial.media.playback_url} eventsUrl={samUrl} />
+          <div style={fitHeight(trial.width / trial.height)}>
+            <SamMaskVideo videoUrl={trial.media.playback_url} eventsUrl={samUrl} startS={trial.trim.start_s} />
+          </div>
         ) : (
           <VideoPlayer
             src={resolveMedia(trial.media.playback_url)!}
@@ -115,8 +117,8 @@ export function MeasurementTab({ exp }: { exp: Experiment }) {
             <img
               src={resolveMedia(trial.media.calib_overlay_url)}
               alt="The detected sheet outline with a 5 cm grid drawn through the calibration"
-              className="w-full rounded-md border border-line bg-black"
-              style={{ aspectRatio: String(trial.width / trial.height) }}
+              className="block w-full rounded-md border border-line bg-black"
+              style={{ aspectRatio: String(trial.width / trial.height), ...fitHeight(trial.width / trial.height) }}
               loading="lazy"
             />
             <p className="mt-2 text-xs text-muted">The outline is the sheet SAM found; the grid is a 5 cm lattice in the plane of motion.</p>

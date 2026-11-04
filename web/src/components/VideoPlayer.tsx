@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 
 import { buttonClass, cn } from "@/components/ui";
+
+/** A portrait phone clip drawn full width would run far past the bottom of the screen: cap its
+ * height at 70% of the viewport and centre it. Landscape media keeps the full width. */
+export function fitHeight(aspect: number): CSSProperties | undefined {
+  return aspect < 1 ? { maxWidth: `calc(70vh * ${aspect})`, marginInline: "auto" } : undefined;
+}
 
 /**
  * A video with the details Safari needs (playsInline, preload="metadata", a poster, a
@@ -64,7 +70,7 @@ export function VideoPlayer({
 
   return (
     <div className={className}>
-      <div className={framed ? "viewfinder [--vf-color:rgb(34_211_238/0.7)]" : undefined}>
+      <div className={framed ? "viewfinder [--vf-color:rgb(34_211_238/0.7)]" : undefined} style={fitHeight(aspect)}>
         <div className="relative w-full overflow-hidden rounded-md border border-line bg-black" style={{ aspectRatio: String(aspect) }}>
           {failed > 0 && !loaded ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black p-4 text-center">
