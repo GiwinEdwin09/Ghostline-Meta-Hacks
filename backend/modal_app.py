@@ -52,12 +52,14 @@ def ingest_trial(job_id: str) -> str:
     return _run_job(job_id)
 
 
-@app.function(**worker, cpu=2, memory=4096, timeout=1800)
+# A long clip spends most of an hour in SAM tracking (a 50 s spin-down tracked two objects for over
+# 30 minutes), and the masks for thousands of frames don't fit in 4 GiB.
+@app.function(**worker, cpu=2, memory=16384, timeout=3600)
 def analyze_experiment(job_id: str) -> str:
     return _run_job(job_id)
 
 
-@app.function(**worker, cpu=4, memory=8192, timeout=1200)
+@app.function(**worker, cpu=4, memory=16384, timeout=3600)
 def prove_trial(job_id: str) -> str:
     return _run_job(job_id)
 
