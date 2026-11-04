@@ -250,6 +250,23 @@ def test_the_sheet_is_segmented_from_the_median_and_three_probe_frames(recorded,
     assert np.abs(first.astype(int) - 90).max() <= 4
 
 
+def test_a_last_frame_the_decoder_holds_back_is_replaced_by_the_one_before(
+    recorded, clip, monkeypatch
+):
+    import ghostline.vision.tracker as tracker
+
+    real = tracker.read_frames
+    monkeypatch.setattr(
+        tracker,
+        "read_frames",
+        lambda path, wanted: {i: f for i, f in real(path, wanted).items() if i != 19},
+    )
+
+    sheet = segment_sheet(FakeMeta({}, sheet=recorded["sheet"]), clip)
+
+    assert [m.frame for m in sheet.probes] == [0, 10, 18]
+
+
 def test_the_sheet_result_is_written_next_to_the_tracks(recorded, clip, tmp_path):
     sheet = segment_sheet(FakeMeta({}, sheet=recorded["sheet"]), clip)
 

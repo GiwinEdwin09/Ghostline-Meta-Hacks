@@ -330,7 +330,11 @@ def segment_sheet(
     median = median_frame(video_path, median_count, n_frames)
     indices = spread_indices(n_frames, 3)
     first, middle, last = indices[0], indices[len(indices) // 2], indices[-1]
-    stills = read_frames(video_path, set(indices))
+    # A decoder can hold back a clip's final frame, so ask for the two before it as well and use
+    # the latest that comes back.
+    spares = {i for i in (last - 1, last - 2) if i > middle}
+    stills = read_frames(video_path, {*indices, *spares})
+    last = max((i for i in stills if i in {last, *spares}), default=last)
 
     found, sam_results = [], []
     for frame, image in [
