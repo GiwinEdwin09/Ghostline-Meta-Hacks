@@ -12,6 +12,9 @@ from .noise import LocalFit
 NOISE_MEAN_FACTOR = 1.25  # mean of a 2D Rayleigh speed with unit-sigma components
 SPEED_K = 3.0  # "3 sigma above noise"
 RELEASE_RUN = 5  # frames in a row
+HOLD_S = 0.3  # a hand holding the object still, after pulling it aside, before letting go
+HOLD_FRACTION = 0.05  # held: slower than this fraction of the motion's top speed
+FREE_FRACTION = 0.5  # the free motion after a hold reaches at least this fraction of it
 STOP_DWELL_S = 0.5
 STOP_TAIL_S = 0.2  # a slow run that reaches the end of the clip counts after this long
 IMPACT_DROP_FRAMES = 2
@@ -65,10 +68,35 @@ def _first_run(mask: np.ndarray, length: int) -> int | None:
     return None
 
 
+def _hold_end(t: np.ndarray, speed: np.ndarray, valid: np.ndarray, start: int) -> int | None:
+    """Where the last hold ends: HOLD_S or more after `start` with the object nearly still (a hand
+    pulled it aside and is holding it) and fast motion after. None when there is no such hold."""
+    after = valid.copy()
+    after[:start] = False
+    if not after.any():
+        return None
+    top = float(np.percentile(speed[after], 95))
+    still = (speed < HOLD_FRACTION * top) & valid
+    fast = (speed > FREE_FRACTION * top) & valid
+    end, i, n = None, start, len(t)
+    while i < n:
+        if not still[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n and still[j + 1]:
+            j += 1
+        if t[j] - t[i] >= HOLD_S and fast[j + 1 :].any():
+            end = j + 1
+        i = j + 1
+    return end
+
+
 def detect_release_stop(t: np.ndarray, xy: np.ndarray, fit: LocalFit, sigma_pos: float) -> Events:
     """Release: speed above noise for five frames in a row, then backed up to where the object
-    first leaves its resting position. Stop: speed under the threshold for more than 0.5 s (or
-    for 0.2 s up to the end of the clip), backed up to where it first settles."""
+    first leaves its resting position; or, when a hand pulls the object aside and holds it first,
+    the end of that hold. Stop: speed under the threshold for more than 0.5 s (or for 0.2 s up to
+    the end of the clip), backed up to where it first settles."""
     ev = Events()
     speed, thr = speed_and_threshold(fit, sigma_pos)
     ev.speed, ev.speed_threshold = speed, thr
@@ -79,6 +107,11 @@ def detect_release_stop(t: np.ndarray, xy: np.ndarray, fit: LocalFit, sigma_pos:
         return ev
     release = onset
     rest = np.arange(max(onset - 6, 0))  # the fit smears the onset by up to half its window
+    held = _hold_end(t, speed, fit.valid, onset)
+    if held is not None:
+        # A held object creeps, so its position can't mark the release; the speed can, up to the
+        # fit's smear of a few frames, while it is still nearly at rest anyway.
+        release, rest = held, rest[:0]
     if len(rest) >= 3:
         rest_pos = np.median(xy[rest], axis=0)
         away = np.linalg.norm(xy - rest_pos, axis=1) > 4 * sigma_pos

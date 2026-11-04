@@ -66,6 +66,20 @@ def test_an_oscillation_never_stops_because_it_only_pauses_at_turning_points():
     assert ev.window_end_t > 5.5
 
 
+def test_a_pendulum_pulled_aside_and_held_is_released_when_the_hold_ends():
+    """Hanging still, pulled to 40 degrees by hand, held (creeping back a little), let go."""
+    t = np.arange(540) / 60
+    theta = np.select(
+        [t < 1, t < 2, t < 3.5],
+        [0.0, np.radians(40) * (1 - np.cos(np.pi * (t - 1))) / 2, np.radians(40 - (t - 2))],
+        np.radians(38.5) * np.cos(np.sqrt(9.81 / 0.5) * (t - 3.5)),
+    )
+    xy = 0.5 * np.column_stack([np.sin(theta), -np.cos(theta)])
+    xy += np.random.default_rng(2).normal(0, SIGMA, xy.shape)
+    ev = detect_release_stop(t, xy, local_fit(t, xy), SIGMA)
+    assert ev.release_t == pytest.approx(3.5, abs=0.15) and ev.stop_t is None
+
+
 def test_speed_threshold_follows_the_noise_level():
     t, xy = fall_series()
     fit = local_fit(t, xy)
