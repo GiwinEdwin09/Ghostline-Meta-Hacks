@@ -59,10 +59,11 @@ def test_gravity_sigma_is_dominated_by_anomalies_and_grows_with_altitude_doubt()
     assert local_gravity_sigma(5000) > local_gravity_sigma(10)
 
 
-def test_gravity_truth_carries_a_method_string():
-    truth = gravity_truth(40.0, 120.0)
-    assert truth.value == pytest.approx(local_gravity(40.0, 120.0))
-    assert "40.000" in truth.method and "120" in truth.method
+def test_gravity_truth_method_does_not_publish_the_location():
+    truth = gravity_truth(40.123, 120.0)
+    assert truth.value == pytest.approx(local_gravity(40.123, 120.0))
+    assert "latitude" in truth.method
+    assert "40" not in truth.method and "120" not in truth.method
 
 
 # --- friction --------------------------------------------------------------------------------
@@ -169,13 +170,13 @@ def test_wilson_interval_is_honest_at_small_n():
 
 
 # --- the manifest ------------------------------------------------------------------------------
-def test_shipped_manifest_has_the_planned_clips():
+def test_shipped_manifest_has_the_filmed_clips():
     rows = load_manifest()
     by_kind = {}
     for row in rows:
         by_kind.setdefault(row.kind, []).append(row)
-    assert len(rows) == 25
-    assert len(by_kind["scored"]) == 20 and len(by_kind["story"]) == 2
+    assert len(rows) == 21
+    assert len(by_kind["scored"]) == 15 and len(by_kind["story"]) == 3
     assert len(by_kind["failure"]) == 3
 
     def count(**match):
@@ -183,26 +184,25 @@ def test_shipped_manifest_has_the_planned_clips():
 
     assert count(system="free_fall", expected_model="FF0") == 4
     assert count(system="free_fall", expected_model="FF1|FF2") == 2
-    assert count(system="pendulum", kind="scored") == 5
-    assert count(system="ramp", expected_model="R1") == 3
-    assert count(system="ramp", expected_model="R2") == 2
-    assert count(system="bounce") == 4
-    assert count(system="spin_down") == 2
-    assert all(r.failure_expected for r in by_kind["failure"])
+    assert count(system="pendulum", kind="scored") == 6
+    assert count(system="bounce") == 3
+    assert count(system="spin_down", kind="story") == 3
     assert {r.failure_expected for r in by_kind["failure"]} == {
         "out_of_plane",
         "camera_motion",
-        "time_base_uncertain",
+        "few_periods",
     }
 
 
-def test_shipped_manifest_needs_filming_so_truth_is_blank_except_theory():
+def test_shipped_manifest_has_a_truth_for_every_scored_clip_and_none_for_the_rest():
     rows = load_manifest()
-    assert all(r.truth is None for r in rows)
     resolved = {r.clip_id: resolve_truth(r) for r in rows}
-    # With no location, tilt repeats or audio yet, only the rolling-ball theory is known.
-    assert {k for k, v in resolved.items() if v is not None} == {"RA-R1", "RA-R2"}
-    assert resolved["RA-R1"].value == pytest.approx(0.4)
+    assert all(resolved[r.clip_id] is not None for r in rows if r.kind == "scored")
+    assert all(resolved[r.clip_id] is None for r in rows if r.kind != "scored")
+    # Gravity is assumed for the drops and swings; bounciness comes from the bounce sounds.
+    assert resolved["PD-2"].value == pytest.approx(9.81)
+    assert resolved["BN-18"].value == pytest.approx(0.89)
+    assert resolved["BN-18"].method == "audio_clicks"
 
 
 def test_shipped_manifest_files_are_unique_and_relative():
@@ -214,7 +214,7 @@ def test_shipped_manifest_files_are_unique_and_relative():
 
 def test_gravity_truth_comes_from_the_default_location_or_the_rows_own():
     rows = {r.clip_id: r for r in load_manifest()}
-    row = rows["FF-D1"]
+    row = rows["FF-G1"].model_copy(update={"truth": None, "method": "local_gravity"})
     assert resolve_truth(row) is None
     truth = resolve_truth(row, latitude=40.0, altitude_m=100.0)
     assert truth.value == pytest.approx(local_gravity(40.0, 100.0))

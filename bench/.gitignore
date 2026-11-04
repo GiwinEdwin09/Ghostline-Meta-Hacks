@@ -2,3 +2,5 @@
 clips/
 # Per-clip progress of an interrupted run (experiment ids, upload ids). Delete to start over.
 state/
+# Console output of a run.
+*.log

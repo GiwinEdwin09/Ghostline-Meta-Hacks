@@ -68,7 +68,8 @@ def gravity_truth(
     return Truth(
         value=local_gravity(latitude_deg, altitude_m),
         sigma=local_gravity_sigma(altitude_sigma_m),
-        method=f"local gravity at {latitude_deg:.3f} deg, {altitude_m:.0f} m",
+        # No coordinates here: this string is published with the results, and the repo is public.
+        method="local gravity from latitude and altitude (IGF 1980, free-air)",
     )
 
 
@@ -236,6 +237,8 @@ class ManifestRow(BaseModel):
     expected_model: str = ""  # library ids, '|' between acceptable ones
     failure_expected: str = ""  # the quality-flag code a bad clip should be marked low for
     file: str = ""  # video path, relative to bench/clips/
+    trim_start_s: float | None = None  # analysis window, set through the trim API
+    trim_end_s: float | None = None
 
     @model_validator(mode="before")
     @classmethod
