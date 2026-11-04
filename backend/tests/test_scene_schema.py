@@ -118,6 +118,8 @@ def test_a_valid_analysis_round_trips():
         "white sheet of paper",
         "steel ball bearing",
         "A4 sheet",
+        "blue and yellow ball",
+        "small black and white ball",
     ],
 )
 def test_good_sam_prompts(prompt):

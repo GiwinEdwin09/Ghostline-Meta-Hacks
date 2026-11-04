@@ -18,6 +18,11 @@ SystemType = Literal[
 # SAM wants a short noun phrase naming one concrete object (Meta's guidance, Part 6).
 _MAX_PROMPT_WORDS = 6
 _LIST_MARKS = re.compile(r"[,;+&/]|\b(and|or)\b", re.IGNORECASE)
+_COLORS = (
+    "red|orange|yellow|green|blue|purple|violet|pink|white|black|gr[ae]y|brown|silver|gold|tan"
+)
+# "blue and yellow ball" is one two-coloured object, not a list
+_TWO_COLORS = re.compile(rf"\b({_COLORS})\s+and\s+({_COLORS})\b", re.IGNORECASE)
 _NEGATION = {"not", "no", "without", "except", "non", "excluding"}
 _POSITION = {
     "left", "right", "top", "bottom", "above", "below", "behind", "beside", "between", "next",
@@ -32,6 +37,7 @@ _MOTION_VERBS = {
 def sam_prompt_problems(prompt: str) -> list[str]:
     """Why `prompt` breaks the SAM prompt rules (empty when it follows them): one concrete noun
     phrase, no verbs, questions, lists, negation or position words."""
+    prompt = _TWO_COLORS.sub(r"\1-\2", prompt)
     words = re.findall(r"[a-z0-9'-]+", prompt.lower())
     problems = []
     if not words:
