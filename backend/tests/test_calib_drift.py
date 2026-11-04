@@ -2,7 +2,13 @@ import cv2
 import numpy as np
 import pytest
 
-from ghostline.calib.drift import Drift, shifts_from_frames, steady_span, undrift
+from ghostline.calib.drift import (
+    Drift,
+    _consensus_shift,
+    shifts_from_frames,
+    steady_span,
+    undrift,
+)
 
 
 def scene(seed=0, size=(180, 320)):
@@ -84,3 +90,14 @@ def test_the_steady_span_starts_after_the_camera_settles():
 )
 def test_the_steady_span_keeps_the_trim_when_there_is_no_single_jump(shift):
     assert steady_span(Drift(np.arange(600), shift), 30, 590, 30.0) == (30, 590)
+
+
+def test_the_background_outvotes_a_spinning_object_that_has_most_of_the_corners():
+    """A spinner on a blank sheet: 60% of the tracked corners are on its arms, each moving its own
+    way; the 40% on the background agree. The median would be pulled off; the consensus is not."""
+    rng = np.random.default_rng(3)
+    arms = rng.normal(0, 3, (180, 2)) + [8.0, -6.0]  # tracking errors, lopsided like a real swirl
+    background = rng.normal(0, 0.1, (120, 2)) + [0.3, -0.2]
+    moves = np.vstack([arms, background])
+    assert _consensus_shift(moves) == pytest.approx([0.3, -0.2], abs=0.05)
+    assert np.linalg.norm(np.median(moves, axis=0) - [0.3, -0.2]) > 1.0

@@ -25,8 +25,12 @@ from ghostline.ingest.frames import iter_frames
 SAMPLE_HZ = 30.0  # drift is smooth; 30 samples a second is plenty
 ANALYSIS_WIDTH = 320
 SMOOTH = 5  # samples in the running median, so a hand sweeping across one frame doesn't count
+SPIKE_WINDOW = 15  # samples (half a second): a jump that comes back sooner is not the camera
+SPIKE_K = 4.0  # robust deviations from the local median that make a sample a spike
+SPIKE_FLOOR_PX = 2.0  # master pixels; smaller wobbles are left alone
 MAX_CORNERS = 300
 MIN_CORNERS = 12  # fewer than this (a blank scene) and the shift isn't measured at all
+AGREE_PX = 1.0  # analysis pixels: corners whose moves differ by less than this moved together
 MAX_CORRECTABLE_PX = 60.0  # master pixels; beyond this the view changes too much to trust a shift
 STEADY_MARGIN_S = 0.5  # a hand reaching for the phone moves it a little before the big jump
 
@@ -69,6 +73,15 @@ class Drift:
         return cls(data["frames"], data["shift_px"])
 
 
+def _consensus_shift(moves: np.ndarray) -> np.ndarray:
+    """The shift the largest group of corners agrees on, to within AGREE_PX. The background moves
+    as one; a spinning or swinging object's corners each move their own way, so they can't
+    outvote it even when they are most of the corners (a spinner on a blank sheet)."""
+    close = np.linalg.norm(moves[:, None, :] - moves[None, :, :], axis=2) <= AGREE_PX
+    best = close[np.argmax(close.sum(axis=1))]
+    return np.median(moves[best], axis=0)
+
+
 def shifts_from_frames(frames: Iterable[tuple[int, np.ndarray]], scale: float = 1.0) -> Drift:
     """Follow the first image's corners into each (master frame index, grayscale image) and take
     the median move. An empty Drift when the scene has too few corners to measure.
@@ -90,7 +103,7 @@ def shifts_from_frames(frames: Iterable[tuple[int, np.ndarray]], scale: float = 
         ok = found.ravel() == 1
         if ok.sum() < MIN_CORNERS:
             continue  # this sample is mostly covered (a hand over the lens); interpolate across
-        dx, dy = np.median((moved[ok] - corners[ok]).reshape(-1, 2), axis=0)
+        dx, dy = _consensus_shift((moved[ok] - corners[ok]).reshape(-1, 2))
         idx.append(i)
         raw.append((dx * scale, dy * scale))
     if not idx:
@@ -100,7 +113,23 @@ def shifts_from_frames(frames: Iterable[tuple[int, np.ndarray]], scale: float = 
         half = SMOOTH // 2
         padded = np.pad(shifts, ((half, half), (0, 0)), mode="edge")
         shifts = np.stack([np.median(padded[k : k + SMOOTH], axis=0) for k in range(len(raw))])
+    shifts = _despike(shifts)
     return Drift(np.asarray(idx), shifts - np.median(shifts, axis=0))
+
+
+def _despike(shifts: np.ndarray) -> np.ndarray:
+    """Short jumps that come straight back (a moment when the object's corners outvote the
+    background) become the local median. A real camera move lasts, so the median follows it."""
+    if len(shifts) < SPIKE_WINDOW:
+        return shifts
+    half = SPIKE_WINDOW // 2
+    padded = np.pad(shifts, ((half, half), (0, 0)), mode="edge")
+    local = np.stack([np.median(padded[k : k + SPIKE_WINDOW], axis=0) for k in range(len(shifts))])
+    off = np.linalg.norm(shifts - local, axis=1)
+    spike = off > max(SPIKE_K * 1.4826 * float(np.median(off)), SPIKE_FLOOR_PX)
+    out = shifts.copy()
+    out[spike] = local[spike]
+    return out
 
 
 def estimate_drift(video_path: str | Path, real_fps: float, master_width: int) -> Drift:
