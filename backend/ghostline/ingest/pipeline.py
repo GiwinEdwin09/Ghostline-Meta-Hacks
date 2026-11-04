@@ -11,6 +11,8 @@ from pathlib import Path
 
 import numpy as np
 
+from ghostline.calib.drift import estimate_drift, steady_span
+
 from .frames import count_frames
 from .models import DeclaredCapture, NormalizeInfo, Notice, ProbeInfo, TimingModel, TrimSuggestion
 from .normalize import make_derived, make_poster, normalize_master
@@ -71,7 +73,8 @@ def ingest_trial(
     """Run the whole of Part 5 on one uploaded clip. Writes into `trial_dir`:
 
     original.<ext>, master.mp4, playback_720.mp4, wonder_480.mp4, audio.wav (if any), poster.jpg,
-    probe.json, timing.json, timestamps.npy (real seconds), trim.json and ingest.json.
+    probe.json, timing.json, timestamps.npy (real seconds), drift.npz (camera drift), trim.json and
+    ingest.json.
     Uploading to the Meta Files API is left to the job that calls this.
     """
     declared = declared or DeclaredCapture()
@@ -114,6 +117,32 @@ def ingest_trial(
             f"master decodes to {n_decoded} frames but the source has {len(probe.pts)}"
         )
     trim = suggest_trim(energy, t_real, (timing.usable_start, timing.usable_stop))
+    # Measured once here; calibration reads it back for the frames it analyses.
+    drift = estimate_drift(out / "master.mp4", timing.real_fps, norm.width)
+    drift.save(out / "drift.npz")
+    lo, hi = steady_span(drift, trim.start_frame, trim.stop_frame, timing.real_fps)
+    if (lo, hi) != (trim.start_frame, trim.stop_frame):
+        where = " and ".join(
+            edge
+            for edge, cut in (("start", lo > trim.start_frame), ("end", hi < trim.stop_frame))
+            if cut
+        )
+        trim = trim.model_copy(
+            update={
+                "start_frame": lo,
+                "stop_frame": hi,
+                "start_t": float(t_real[lo]),
+                "stop_t": float(t_real[hi - 1]),
+            }
+        )
+        notices.append(
+            Notice(
+                code="camera_moved_trimmed",
+                severity="info",
+                message=f"The camera moved at the {where} of the clip, so the suggested trim "
+                f"leaves that part out ({trim.start_t:.2f} to {trim.stop_t:.2f} s).",
+            )
+        )
     if luma < DARK_LUMA:
         notices.append(
             Notice(

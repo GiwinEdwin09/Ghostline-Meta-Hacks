@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pytest
 
-from ghostline.calib.drift import Drift, shifts_from_frames, undrift
+from ghostline.calib.drift import Drift, shifts_from_frames, steady_span, undrift
 
 
 def scene(seed=0, size=(180, 320)):
@@ -50,3 +50,37 @@ def test_shift_is_interpolated_between_samples_and_removed_from_tracks(tmp_path)
     again = Drift.load(tmp_path / "drift.npz")
     cx, cy = undrift(np.array([101.0]), np.array([48.0]), np.array([5]), again)
     assert (cx[0], cy[0]) == pytest.approx((100.0, 50.0))
+
+
+def test_a_window_is_measured_from_where_the_camera_sits_inside_it():
+    drift = Drift(np.arange(0, 100, 10), np.array([[0.0, 0.0]] * 5 + [[30.0, 0.0]] * 5))
+    inside = drift.between(50, 100)
+    assert list(inside.frames) == [50, 60, 70, 80, 90] and inside.max_px == pytest.approx(0)
+    assert drift.between(200, 300).max_px == 0
+
+
+def test_the_steady_span_ends_before_the_phone_is_picked_up():
+    frames = np.arange(600)  # one sample per frame at 30 fps
+    shift = np.zeros((600, 2))
+    shift[570:, 0] = np.linspace(0, 400, 30)  # the last second: a hand picks the phone up
+    # 60 px is first passed at frame 575; the cut is half a second (15 frames) before it
+    assert steady_span(Drift(frames, shift), 0, 600, 30.0) == (0, 560)
+
+
+def test_the_steady_span_starts_after_the_camera_settles():
+    frames = np.arange(600)
+    shift = np.zeros((600, 2))
+    shift[:20, 1] = np.linspace(-150, 0, 20)  # settling after the record tap
+    assert steady_span(Drift(frames, shift), 0, 600, 30.0) == (11 + 15, 600)
+
+
+@pytest.mark.parametrize(
+    "shift",
+    [
+        np.zeros((600, 2)),  # a tripod
+        np.c_[np.linspace(0, 50, 600), np.zeros(600)],  # a slow sag, all of it correctable
+        np.c_[100 * np.sin(np.arange(600) / 5), np.zeros(600)],  # handheld throughout
+    ],
+)
+def test_the_steady_span_keeps_the_trim_when_there_is_no_single_jump(shift):
+    assert steady_span(Drift(np.arange(600), shift), 30, 590, 30.0) == (30, 590)

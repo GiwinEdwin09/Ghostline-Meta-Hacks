@@ -170,8 +170,9 @@ def ingest(ctx: JobContext, trial: Trial) -> IngestResult:
         "probe": "probe.json",
         "timing": "timing.json",
     }
-    if (trial_dir / "audio.wav").is_file():
-        paths["audio"] = "audio.wav"
+    for name, file in (("audio", "audio.wav"), ("drift", "drift.npz")):
+        if (trial_dir / file).is_file():
+            paths[name] = file
     ctx.notebook.append(
         actor="system",
         kind="observation",
@@ -555,11 +556,12 @@ def calibrate(
 
     # Take out the camera's drift first, so the corner check below sees only what a shift can't
     # explain (rotation, zoom) and still stops those clips.
-    drift = _measure_drift(exp_dir, trial, size[0])
+    drift = _measure_drift(ctx, trial, size[0])
     if drift is not None and drift.max_px > MAX_CORRECTABLE_PX:
         raise StageError(
-            f"The camera moved {drift.max_px:.0f} px during the clip, which is too much to "
-            "correct. Film again with the phone on a tripod.",
+            f"The camera moved {drift.max_px:.0f} px inside the trimmed clip, which is too much "
+            "to correct. Trim off the part where it moves, or film again with the phone on a "
+            "tripod.",
             code="camera_moved",
             retryable=False,
         )
@@ -641,14 +643,20 @@ def calibrate(
 DRIFT_IGNORE_PX = 1.0  # below this a tripod clip is left exactly as it was
 
 
-def _measure_drift(exp_dir: Path, trial: Trial, master_width: int) -> Drift | None:
-    """The camera's translation during the clip, measured on the master, or None when it stays
-    under DRIFT_IGNORE_PX."""
-    master = trial.paths.get("master")
+def _measure_drift(ctx: JobContext, trial: Trial, master_width: int) -> Drift | None:
+    """The camera's translation inside the analysis window, or None when it stays under
+    DRIFT_IGNORE_PX. Ingest measures it on the whole master; older trials are measured here."""
+    exp_dir = ctx.paths.experiment_dir(trial.experiment_id)
+    saved, master = trial.paths.get("drift"), trial.paths.get("master")
     fps = (trial.timing or {}).get("real_fps")
-    if not master or not fps or not (exp_dir / master).exists():
+    if saved and (exp_dir / saved).exists():
+        drift = Drift.load(exp_dir / saved)
+    elif master and fps and (exp_dir / master).exists():
+        drift = estimate_drift(exp_dir / master, float(fps), master_width)
+    else:
         return None
-    drift = estimate_drift(exp_dir / master, float(fps), master_width)
+    window = media.analysis_window(trial, _load_timestamps(ctx, trial), ctx.settings)
+    drift = drift.between(window.start, window.stop)
     return drift if drift.max_px > DRIFT_IGNORE_PX else None
 
 

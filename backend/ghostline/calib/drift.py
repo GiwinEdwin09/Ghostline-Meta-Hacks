@@ -6,7 +6,9 @@ frame (pyramidal Lucas-Kanade) and taking the median of their moves measures tha
 SAM; a ball or a hand holds few of the corners, so the median ignores it. Subtracting the shift
 from the tracked positions puts them back in the
 reference picture the homography was fitted on. Only translation is corrected: the corner check
-that runs on the corrected corners still stops a clip whose camera rotated or zoomed.
+that runs on the corrected corners still stops a clip whose camera rotated or zoomed. A camera that
+jumps too far only at the start or end (picked up to stop the recording) is trimmed off instead:
+see `steady_span`.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ SMOOTH = 5  # samples in the running median, so a hand sweeping across one frame
 MAX_CORNERS = 300
 MIN_CORNERS = 12  # fewer than this (a blank scene) and the shift isn't measured at all
 MAX_CORRECTABLE_PX = 60.0  # master pixels; beyond this the view changes too much to trust a shift
+STEADY_MARGIN_S = 0.5  # a hand reaching for the phone moves it a little before the big jump
 
 
 @dataclass
@@ -47,6 +50,15 @@ class Drift:
         if not len(self.frames):
             return np.zeros((len(f), 2))
         return np.column_stack([np.interp(f, self.frames, self.shift_px[:, k]) for k in range(2)])
+
+    def between(self, start: int, stop: int) -> Drift:
+        """The samples in master frames [start, stop), relative to where the picture mostly sits
+        there (the median image the sheet is found on comes from those frames)."""
+        keep = (self.frames >= start) & (self.frames < stop)
+        if not keep.any():
+            return Drift(np.zeros(0), np.zeros((0, 2)))
+        shift = self.shift_px[keep]
+        return Drift(self.frames[keep], shift - np.median(shift, axis=0))
 
     def save(self, path: str | Path) -> None:
         np.savez(path, frames=self.frames, shift_px=self.shift_px)
@@ -100,6 +112,26 @@ def estimate_drift(video_path: str | Path, real_fps: float, master_width: int) -
         if i % stride == 0
     )
     return shifts_from_frames(frames, scale=master_width / ANALYSIS_WIDTH)
+
+
+def steady_span(drift: Drift, start: int, stop: int, real_fps: float) -> tuple[int, int]:
+    """The part of master frames [start, stop) to analyse when the camera moves too far to correct
+    only at the start or end (settling after the record tap, a hand picking the phone up to stop):
+    the longest run of samples within MAX_CORRECTABLE_PX, less STEADY_MARGIN_S where it was cut.
+
+    [start, stop) itself when the camera stays within reach, or when the steady run is under half
+    of it: a camera that moves throughout is left for calibration to refuse.
+    """
+    part = drift.between(start, stop)
+    ok = np.linalg.norm(part.shift_px, axis=1) <= MAX_CORRECTABLE_PX
+    if ok.all() or not ok.any():
+        return start, stop
+    runs = np.flatnonzero(np.diff(np.r_[0, ok.astype(int), 0])).reshape(-1, 2)
+    a, b = max(runs, key=lambda r: r[1] - r[0])  # sample indices, [a, b)
+    margin = round(STEADY_MARGIN_S * real_fps)
+    lo = start if a == 0 else int(part.frames[a - 1]) + margin
+    hi = stop if b == len(ok) else int(part.frames[b]) - margin
+    return (lo, hi) if hi - lo >= (stop - start) / 2 else (start, stop)
 
 
 def undrift(cx: np.ndarray, cy: np.ndarray, frames: np.ndarray, drift: Drift):

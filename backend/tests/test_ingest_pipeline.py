@@ -47,7 +47,14 @@ def test_normal_clip_gives_an_identical_master_and_real_timestamps(plain):
 def test_outputs_are_all_written(plain):
     _, res = plain
     names = ("original.mp4", "master.mp4", "playback_720.mp4", "wonder_480.mp4", "poster.jpg")
-    names += ("probe.json", "timing.json", "timestamps.npy", "trim.json", "ingest.json")
+    names += (
+        "probe.json",
+        "timing.json",
+        "timestamps.npy",
+        "trim.json",
+        "ingest.json",
+        "drift.npz",
+    )
     for name in names:
         assert (res.trial_dir / name).stat().st_size > 0, name
     assert not (res.trial_dir / "audio.wav").exists()  # the clip has no audio
@@ -64,6 +71,29 @@ def test_trim_suggestion_brackets_the_motion(plain):
     assert res.trim.reason == "motion_window"
     assert res.trim.start_frame <= release and res.trim.stop_frame >= stop
     assert res.trim.stop_frame - res.trim.start_frame < gt.n_frames
+
+
+def test_trim_stops_before_the_phone_is_picked_up():
+    """A pendulum still swinging when the hand reaches for the phone: the motion window runs to the
+    end, so only the camera's jump says where the usable part stops."""
+    path = tmp_dir("pickup") / "pickup.mp4"
+    noise = np.random.default_rng(0).uniform(0, 255, (360, 640)).astype(np.float32)
+    plate = sum(cv2.GaussianBlur(noise, (0, 0), s) * s for s in (3, 12, 30))  # grain and panels
+    plate = cv2.normalize(plate, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    plate = cv2.cvtColor(plate, cv2.COLOR_GRAY2BGR)
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 60, (640, 360))
+    for i in range(240):  # 4 s; from 3 s the picture slides away, 120 px by the end
+        slide = np.float32([[1, 0, 120 * max(0, i - 180) / 59], [0, 1, 0]])
+        frame = cv2.warpAffine(plate, slide, (640, 360), borderMode=cv2.BORDER_REFLECT)
+        bob = (int(320 + 200 * np.sin(i / 15)), 200)
+        writer.write(cv2.circle(frame, bob, 12, (255, 255, 255), -1))
+    writer.release()
+
+    res = ingest_trial(path, tmp_dir("pickup_out"), DeclaredCapture(mode="normal", fps=60))
+
+    # 60 px is passed at about 3.5 s; the trim stops half a second before
+    assert 2.8 < res.trim.stop_t < 3.1 and res.trim.start_t < 0.5
+    assert "camera_moved_trimmed" in {w.code for w in res.warnings}
 
 
 def test_trimmed_master_has_exactly_the_requested_frames(plain):
